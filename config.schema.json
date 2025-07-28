@@ -1,0 +1,43 @@
+{
+  "pluginAlias": "ACInfinity",
+  "pluginType": "platform",
+  "singular": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "required": true,
+        "default": "AC Infinity"
+      },
+      "email": {
+        "title": "Email",
+        "type": "string",
+        "required": true,
+        "description": "Your AC Infinity account email"
+      },
+      "password": {
+        "title": "Password",
+        "type": "string",
+        "required": true,
+        "description": "Your AC Infinity account password"
+      },
+      "pollingInterval": {
+        "title": "Polling Interval",
+        "type": "integer",
+        "default": 10,
+        "minimum": 5,
+        "maximum": 600,
+        "description": "How often to poll for updates (in seconds)"
+      },
+      "host": {
+        "title": "API Host",
+        "type": "string",
+        "default": "http://www.acinfinityserver.com",
+        "description": "AC Infinity API host (advanced users only)"
+      }
+    },
+    "required": ["email", "password"]
+  }
+}
