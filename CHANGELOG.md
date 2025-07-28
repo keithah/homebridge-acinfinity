@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2025-01-28
+
+### Changed
+- **BREAKING:** Complete restructure of HomeKit representation
+  - Individual fan ports now appear as separate accessories instead of services under one controller
+  - Each port gets its proper name (e.g., "Fan in attic", "Bottom intake fan") instead of generic "Closet Fan"
+  - Eliminates the confusing grid of identical "Closet Fan" tiles
+  - Controller device is no longer exposed as a separate accessory
+
+### Removed
+- Main controller accessory (only individual ports are now exposed)
+
+### Technical Changes
+- Created new `ACInfinityFanPort` class for individual port accessories
+- Updated platform discovery to register each port as a separate accessory
+- Modified update mechanism to work with individual port instances
+
 ## [1.0.5] - 2025-01-28
 
 ### Fixed

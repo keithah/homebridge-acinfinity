@@ -9,9 +9,10 @@ import {
   Characteristic,
 } from 'homebridge';
 
-import { PLATFORM_NAME, PLUGIN_NAME } from './constants';
+import { PLATFORM_NAME, PLUGIN_NAME, ControllerPropertyKey, PortPropertyKey } from './constants';
 import { ACInfinityClient } from './api/ACInfinityClient';
 import { ACInfinityController } from './accessories/ACInfinityController';
+import { ACInfinityFanPort } from './accessories/ACInfinityFanPort';
 
 export interface ACInfinityPlatformConfig extends PlatformConfig {
   email: string;
@@ -28,6 +29,7 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
   
   private readonly discoveredDevices = new Set<string>();
   private readonly controllerInstances = new Map<string, ACInfinityController>();
+  private readonly portInstances = new Map<string, ACInfinityFanPort>();
   private pollingInterval: number;
   private updateTimer?: NodeJS.Timeout;
 
@@ -81,28 +83,44 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
       this.log.info(`Found ${devices.length} device(s) from AC Infinity API`);
       this.log.info('Device data:', JSON.stringify(devices, null, 2));
       
-      // Process each device
+      // Process each device and create individual accessories for each port
       for (const device of devices) {
-        const uuid = this.api.hap.uuid.generate(device.devId);
-        this.discoveredDevices.add(uuid);
+        const deviceInfo = device[ControllerPropertyKey.DEVICE_INFO];
+        
+        if (deviceInfo && ControllerPropertyKey.PORTS in deviceInfo && Array.isArray(deviceInfo[ControllerPropertyKey.PORTS])) {
+          // Create individual accessories for each port
+          for (const port of deviceInfo[ControllerPropertyKey.PORTS]) {
+            const portNumber = port[PortPropertyKey.PORT];
+            const portName = port[PortPropertyKey.NAME] || `${device.devName} Port ${portNumber}`;
+            const portUuid = this.api.hap.uuid.generate(`${device.devId}-port-${portNumber}`);
+            
+            this.discoveredDevices.add(portUuid);
 
-        // Check if accessory already exists
-        const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
+            // Check if port accessory already exists
+            const existingAccessory = this.accessories.find(accessory => accessory.UUID === portUuid);
 
-        if (existingAccessory) {
-          // Update existing accessory
-          this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName);
-          existingAccessory.context.device = device;
-          const controller = new ACInfinityController(this, existingAccessory);
-          this.controllerInstances.set(uuid, controller);
-        } else {
-          // Create new accessory
-          this.log.info('Adding new accessory:', device.devName);
-          const accessory = new this.api.platformAccessory(device.devName, uuid);
-          accessory.context.device = device;
-          const controller = new ACInfinityController(this, accessory);
-          this.controllerInstances.set(uuid, controller);
-          this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+            if (existingAccessory) {
+              // Update existing port accessory
+              this.log.info('Restoring existing port accessory from cache:', existingAccessory.displayName);
+              existingAccessory.context.device = device;
+              existingAccessory.context.port = port;
+              existingAccessory.context.deviceId = device.devId;
+              existingAccessory.context.portNumber = portNumber;
+              const fanPort = new ACInfinityFanPort(this, existingAccessory);
+              this.portInstances.set(portUuid, fanPort);
+            } else {
+              // Create new port accessory
+              this.log.info('Adding new port accessory:', portName);
+              const accessory = new this.api.platformAccessory(portName, portUuid);
+              accessory.context.device = device;
+              accessory.context.port = port;
+              accessory.context.deviceId = device.devId;
+              accessory.context.portNumber = portNumber;
+              const fanPort = new ACInfinityFanPort(this, accessory);
+              this.portInstances.set(portUuid, fanPort);
+              this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+            }
+          }
         }
       }
 
@@ -110,9 +128,10 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
       const accessoriesToRemove = this.accessories.filter(accessory => !this.discoveredDevices.has(accessory.UUID));
       if (accessoriesToRemove.length > 0) {
         this.log.info('Removing accessories no longer present:', accessoriesToRemove.map(a => a.displayName));
-        // Clean up controller instances
+        // Clean up instances
         for (const accessory of accessoriesToRemove) {
           this.controllerInstances.delete(accessory.UUID);
+          this.portInstances.delete(accessory.UUID);
         }
         this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, accessoriesToRemove);
       }
@@ -141,14 +160,23 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
       const devices = await this.client.getDevicesListAll();
       
       for (const device of devices) {
-        const uuid = this.api.hap.uuid.generate(device.devId);
-        const accessory = this.accessories.find(a => a.UUID === uuid);
+        const deviceInfo = device[ControllerPropertyKey.DEVICE_INFO];
         
-        if (accessory) {
-          accessory.context.device = device;
-          const controller = this.controllerInstances.get(uuid);
-          if (controller) {
-            controller.updateDevice(device);
+        if (deviceInfo && ControllerPropertyKey.PORTS in deviceInfo && Array.isArray(deviceInfo[ControllerPropertyKey.PORTS])) {
+          // Update individual port accessories
+          for (const port of deviceInfo[ControllerPropertyKey.PORTS]) {
+            const portNumber = port[PortPropertyKey.PORT];
+            const portUuid = this.api.hap.uuid.generate(`${device.devId}-port-${portNumber}`);
+            const accessory = this.accessories.find(a => a.UUID === portUuid);
+            
+            if (accessory) {
+              accessory.context.device = device;
+              accessory.context.port = port;
+              const fanPort = this.portInstances.get(portUuid);
+              if (fanPort) {
+                fanPort.updatePort(port);
+              }
+            }
           }
         }
       }
