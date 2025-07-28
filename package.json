@@ -6,8 +6,13 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
-    "prepublishOnly": "npm run build"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
   },
+  "files": [
+    "dist",
+    "config.schema.json"
+  ],
   "keywords": [
     "homebridge-plugin",
     "ac-infinity",
@@ -21,12 +26,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/homebridge-acinfinity.git"
+    "url": "https://github.com/keithah/homebridge-acinfinity.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/homebridge-acinfinity/issues"
+    "url": "https://github.com/keithah/homebridge-acinfinity/issues"
   },
-  "homepage": "https://github.com/yourusername/homebridge-acinfinity#readme",
+  "homepage": "https://github.com/keithah/homebridge-acinfinity#readme",
   "devDependencies": {
     "@types/node": "^24.1.0",
     "homebridge": "^1.11.0",
@@ -34,5 +39,8 @@
   },
   "dependencies": {
     "axios": "^1.11.0"
+  },
+  "peerDependencies": {
+    "homebridge": ">=1.6.0"
   }
 }
