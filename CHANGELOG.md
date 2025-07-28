@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2025-01-28
+
+### Added
+- **Smart Port Filtering**: Only active/connected ports are now exposed to HomeKit (no more empty "Port 3", "Port 4", etc.)
+- **Optional Temperature & Humidity Sensors**: New `exposeSensors` configuration option to create separate HomeKit accessories for controller sensors
+- Configuration option in Homebridge UI to enable/disable sensor exposure
+
+### Changed
+- Inactive ports (offline or no load connected) are automatically filtered out
+- Cleaner HomeKit representation with only functional devices
+
+### Technical Changes
+- Added `ACInfinitySensor` class for dedicated sensor accessories
+- Updated platform logic to check `port.online` and `port.loadState` before creating accessories
+- Extended configuration schema with `exposeSensors` boolean option
+
 ## [1.1.0] - 2025-01-28
 
 ### Changed
