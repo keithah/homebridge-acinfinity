@@ -70,11 +70,16 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
     try {
       // Login to API
       if (!this.client.isLoggedIn()) {
+        this.log.info('Logging into AC Infinity API...');
         await this.client.login();
+        this.log.info('Successfully logged in to AC Infinity API');
       }
 
       // Get all devices
+      this.log.info('Fetching device list from AC Infinity API...');
       const devices = await this.client.getDevicesListAll();
+      this.log.info(`Found ${devices.length} device(s) from AC Infinity API`);
+      this.log.info('Device data:', JSON.stringify(devices, null, 2));
       
       // Process each device
       for (const device of devices) {
