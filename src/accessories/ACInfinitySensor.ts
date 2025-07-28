@@ -31,9 +31,9 @@ export class ACInfinitySensor {
   private getSensorModelName(): string {
     switch (this.sensorType) {
       case 'controller-temp':
-        return 'Controller Temperature Sensor';
+        return 'Temperature Sensor';
       case 'controller-humidity':
-        return 'Controller Humidity Sensor';
+        return 'Humidity Sensor';
       default:
         return 'AC Infinity Sensor';
     }
@@ -43,7 +43,7 @@ export class ACInfinitySensor {
     switch (this.sensorType) {
       case 'controller-temp':
         const tempService = this.accessory.getService(this.platform.Service.TemperatureSensor) ||
-          this.accessory.addService(this.platform.Service.TemperatureSensor, 'Controller Temperature');
+          this.accessory.addService(this.platform.Service.TemperatureSensor, 'Temperature');
         
         tempService.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
           .onGet(this.getTemperature.bind(this));
@@ -52,7 +52,7 @@ export class ACInfinitySensor {
 
       case 'controller-humidity':
         const humidityService = this.accessory.getService(this.platform.Service.HumiditySensor) ||
-          this.accessory.addService(this.platform.Service.HumiditySensor, 'Controller Humidity');
+          this.accessory.addService(this.platform.Service.HumiditySensor, 'Humidity');
         
         humidityService.getCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity)
           .onGet(this.getHumidity.bind(this));

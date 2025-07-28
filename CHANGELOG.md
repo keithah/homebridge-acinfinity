@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2025-01-28
+
+### Changed
+- Updated sensor accessory names to use device name instead of generic "Controller"
+- Temperature sensor now named "{DeviceName} Temperature" (e.g., "Closet Fan Temperature")
+- Humidity sensor now named "{DeviceName} Humidity" (e.g., "Closet Fan Humidity")
+- More descriptive and user-friendly naming for better HomeKit organization
+
 ## [1.2.0] - 2025-01-28
 
 ### Added

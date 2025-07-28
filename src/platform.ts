@@ -132,21 +132,24 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
 
         // Create sensor accessories if enabled
         if (this.config.exposeSensors && deviceInfo) {
-          // Controller temperature sensor
+          // Device temperature sensor
           if (deviceInfo[ControllerPropertyKey.TEMPERATURE] !== null && deviceInfo[ControllerPropertyKey.TEMPERATURE] !== undefined) {
             const tempUuid = this.api.hap.uuid.generate(`${device.devId}-sensor-controller-temp`);
             this.discoveredDevices.add(tempUuid);
+            const tempName = `${device.devName} Temperature`;
 
             const existingTempAccessory = this.accessories.find(accessory => accessory.UUID === tempUuid);
             if (existingTempAccessory) {
               this.log.info('Restoring existing temperature sensor from cache:', existingTempAccessory.displayName);
               existingTempAccessory.context.device = device;
               existingTempAccessory.context.sensorType = 'controller-temp';
+              existingTempAccessory.displayName = tempName;
+              existingTempAccessory._associatedHAPAccessory.displayName = tempName;
               const tempSensor = new ACInfinitySensor(this, existingTempAccessory);
               this.sensorInstances.set(tempUuid, tempSensor);
             } else {
-              this.log.info('Adding new temperature sensor accessory: Controller Temperature');
-              const tempAccessory = new this.api.platformAccessory('Controller Temperature', tempUuid);
+              this.log.info('Adding new temperature sensor accessory:', tempName);
+              const tempAccessory = new this.api.platformAccessory(tempName, tempUuid);
               tempAccessory.context.device = device;
               tempAccessory.context.sensorType = 'controller-temp';
               const tempSensor = new ACInfinitySensor(this, tempAccessory);
@@ -155,21 +158,24 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
             }
           }
 
-          // Controller humidity sensor
+          // Device humidity sensor
           if (deviceInfo[ControllerPropertyKey.HUMIDITY] !== null && deviceInfo[ControllerPropertyKey.HUMIDITY] !== undefined) {
             const humidityUuid = this.api.hap.uuid.generate(`${device.devId}-sensor-controller-humidity`);
             this.discoveredDevices.add(humidityUuid);
+            const humidityName = `${device.devName} Humidity`;
 
             const existingHumidityAccessory = this.accessories.find(accessory => accessory.UUID === humidityUuid);
             if (existingHumidityAccessory) {
               this.log.info('Restoring existing humidity sensor from cache:', existingHumidityAccessory.displayName);
               existingHumidityAccessory.context.device = device;
               existingHumidityAccessory.context.sensorType = 'controller-humidity';
+              existingHumidityAccessory.displayName = humidityName;
+              existingHumidityAccessory._associatedHAPAccessory.displayName = humidityName;
               const humiditySensor = new ACInfinitySensor(this, existingHumidityAccessory);
               this.sensorInstances.set(humidityUuid, humiditySensor);
             } else {
-              this.log.info('Adding new humidity sensor accessory: Controller Humidity');
-              const humidityAccessory = new this.api.platformAccessory('Controller Humidity', humidityUuid);
+              this.log.info('Adding new humidity sensor accessory:', humidityName);
+              const humidityAccessory = new this.api.platformAccessory(humidityName, humidityUuid);
               humidityAccessory.context.device = device;
               humidityAccessory.context.sensorType = 'controller-humidity';
               const humiditySensor = new ACInfinitySensor(this, humidityAccessory);
