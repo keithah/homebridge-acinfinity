@@ -27,6 +27,7 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
   public readonly client: ACInfinityClient;
   
   private readonly discoveredDevices = new Set<string>();
+  private readonly controllerInstances = new Map<string, ACInfinityController>();
   private pollingInterval: number;
   private updateTimer?: NodeJS.Timeout;
 
@@ -87,13 +88,15 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
           // Update existing accessory
           this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName);
           existingAccessory.context.device = device;
-          new ACInfinityController(this, existingAccessory);
+          const controller = new ACInfinityController(this, existingAccessory);
+          this.controllerInstances.set(uuid, controller);
         } else {
           // Create new accessory
           this.log.info('Adding new accessory:', device.devName);
           const accessory = new this.api.platformAccessory(device.devName, uuid);
           accessory.context.device = device;
-          new ACInfinityController(this, accessory);
+          const controller = new ACInfinityController(this, accessory);
+          this.controllerInstances.set(uuid, controller);
           this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
         }
       }
@@ -102,6 +105,10 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
       const accessoriesToRemove = this.accessories.filter(accessory => !this.discoveredDevices.has(accessory.UUID));
       if (accessoriesToRemove.length > 0) {
         this.log.info('Removing accessories no longer present:', accessoriesToRemove.map(a => a.displayName));
+        // Clean up controller instances
+        for (const accessory of accessoriesToRemove) {
+          this.controllerInstances.delete(accessory.UUID);
+        }
         this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, accessoriesToRemove);
       }
 
@@ -134,7 +141,7 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
         
         if (accessory) {
           accessory.context.device = device;
-          const controller = accessory.context.controller as ACInfinityController;
+          const controller = this.controllerInstances.get(uuid);
           if (controller) {
             controller.updateDevice(device);
           }

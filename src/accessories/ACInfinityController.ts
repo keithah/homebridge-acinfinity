@@ -17,14 +17,20 @@ export class ACInfinityController {
     
     // Set accessory information
     this.informationService = this.accessory.getService(this.platform.Service.AccessoryInformation)!;
+    
+    const deviceInfo = accessory.context.device[ControllerPropertyKey.DEVICE_INFO];
+    const modelName = typeof deviceInfo === 'string' ? deviceInfo : 
+                      typeof deviceInfo === 'object' && deviceInfo?.deviceName ? deviceInfo.deviceName :
+                      'AC Infinity Controller';
+    
     this.informationService
       .setCharacteristic(this.platform.Characteristic.Manufacturer, MANUFACTURER)
-      .setCharacteristic(this.platform.Characteristic.Model, accessory.context.device[ControllerPropertyKey.DEVICE_INFO] || 'Unknown')
-      .setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.device[ControllerPropertyKey.MAC_ADDR])
-      .setCharacteristic(this.platform.Characteristic.FirmwareRevision, accessory.context.device[ControllerPropertyKey.SW_VERSION]);
+      .setCharacteristic(this.platform.Characteristic.Model, modelName)
+      .setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.device[ControllerPropertyKey.MAC_ADDR] || 'Unknown')
+      .setCharacteristic(this.platform.Characteristic.FirmwareRevision, accessory.context.device[ControllerPropertyKey.SW_VERSION] || '1.0.0');
 
-    // Store controller instance for updates
-    accessory.context.controller = this;
+    // Don't store controller instance to avoid circular reference
+    // The platform will handle updates via the updateDevice method
 
     // Create services based on device capabilities
     this.setupSensors();
