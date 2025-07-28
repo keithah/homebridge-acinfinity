@@ -39,9 +39,10 @@ export class ACInfinityController {
 
   private setupSensors() {
     const device = this.accessory.context.device;
+    const deviceInfo = device[ControllerPropertyKey.DEVICE_INFO];
     
     // Built-in temperature sensor
-    if (ControllerPropertyKey.TEMPERATURE in device && device[ControllerPropertyKey.TEMPERATURE] !== null) {
+    if (deviceInfo && ControllerPropertyKey.TEMPERATURE in deviceInfo && deviceInfo[ControllerPropertyKey.TEMPERATURE] !== null) {
       this.temperatureService = this.accessory.getService(this.platform.Service.TemperatureSensor) || undefined;
       if (!this.temperatureService) {
         this.temperatureService = this.accessory.addService(this.platform.Service.TemperatureSensor, 'Temperature');
@@ -52,7 +53,7 @@ export class ACInfinityController {
     }
 
     // Built-in humidity sensor
-    if (ControllerPropertyKey.HUMIDITY in device && device[ControllerPropertyKey.HUMIDITY] !== null) {
+    if (deviceInfo && ControllerPropertyKey.HUMIDITY in deviceInfo && deviceInfo[ControllerPropertyKey.HUMIDITY] !== null) {
       this.humidityService = this.accessory.getService(this.platform.Service.HumiditySensor) || undefined;
       if (!this.humidityService) {
         this.humidityService = this.accessory.addService(this.platform.Service.HumiditySensor, 'Humidity');
@@ -63,8 +64,8 @@ export class ACInfinityController {
     }
 
     // Additional sensors (for AI controllers)
-    if (ControllerPropertyKey.SENSORS in device && Array.isArray(device[ControllerPropertyKey.SENSORS])) {
-      for (const sensor of device[ControllerPropertyKey.SENSORS]) {
+    if (deviceInfo && ControllerPropertyKey.SENSORS in deviceInfo && Array.isArray(deviceInfo[ControllerPropertyKey.SENSORS])) {
+      for (const sensor of deviceInfo[ControllerPropertyKey.SENSORS]) {
         this.setupAdditionalSensor(sensor);
       }
     }
@@ -115,9 +116,10 @@ export class ACInfinityController {
 
   private setupPorts() {
     const device = this.accessory.context.device;
+    const deviceInfo = device[ControllerPropertyKey.DEVICE_INFO];
     
-    if (ControllerPropertyKey.PORTS in device && Array.isArray(device[ControllerPropertyKey.PORTS])) {
-      for (const port of device[ControllerPropertyKey.PORTS]) {
+    if (deviceInfo && ControllerPropertyKey.PORTS in deviceInfo && Array.isArray(deviceInfo[ControllerPropertyKey.PORTS])) {
+      for (const port of deviceInfo[ControllerPropertyKey.PORTS]) {
         this.setupPort(port);
       }
     }
@@ -153,16 +155,20 @@ export class ACInfinityController {
 
   async getTemperature(): Promise<CharacteristicValue> {
     const device = this.accessory.context.device;
-    const temp = device[ControllerPropertyKey.TEMPERATURE];
+    const deviceInfo = device[ControllerPropertyKey.DEVICE_INFO];
+    const temp = deviceInfo ? deviceInfo[ControllerPropertyKey.TEMPERATURE] : null;
     
-    // Convert from Fahrenheit to Celsius if needed
-    // The API seems to return temperature in the unit set on the device
-    return temp !== null ? temp : 0;
+    // Convert from raw API value to Celsius (API returns value * 100)
+    return temp !== null ? temp / 100 : 0;
   }
 
   async getHumidity(): Promise<CharacteristicValue> {
     const device = this.accessory.context.device;
-    return device[ControllerPropertyKey.HUMIDITY] || 0;
+    const deviceInfo = device[ControllerPropertyKey.DEVICE_INFO];
+    const humidity = deviceInfo ? deviceInfo[ControllerPropertyKey.HUMIDITY] : null;
+    
+    // Convert from raw API value to percentage (API returns value * 100)
+    return humidity !== null ? humidity / 100 : 0;
   }
 
   getSensorValue(sensor: any): number {
@@ -244,36 +250,38 @@ export class ACInfinityController {
 
   private findPort(portNumber: number): any {
     const device = this.accessory.context.device;
-    if (!device[ControllerPropertyKey.PORTS]) {
+    const deviceInfo = device[ControllerPropertyKey.DEVICE_INFO];
+    if (!deviceInfo || !deviceInfo[ControllerPropertyKey.PORTS]) {
       return null;
     }
     
-    return device[ControllerPropertyKey.PORTS].find((p: any) => p[PortPropertyKey.PORT] === portNumber);
+    return deviceInfo[ControllerPropertyKey.PORTS].find((p: any) => p[PortPropertyKey.PORT] === portNumber);
   }
 
   updateDevice(device: any) {
     // Update context
     this.accessory.context.device = device;
+    const deviceInfo = device[ControllerPropertyKey.DEVICE_INFO];
     
     // Update temperature
-    if (this.temperatureService) {
+    if (this.temperatureService && deviceInfo) {
       this.temperatureService.updateCharacteristic(
         this.platform.Characteristic.CurrentTemperature,
-        device[ControllerPropertyKey.TEMPERATURE] || 0
+        deviceInfo[ControllerPropertyKey.TEMPERATURE] ? deviceInfo[ControllerPropertyKey.TEMPERATURE] / 100 : 0
       );
     }
     
     // Update humidity
-    if (this.humidityService) {
+    if (this.humidityService && deviceInfo) {
       this.humidityService.updateCharacteristic(
         this.platform.Characteristic.CurrentRelativeHumidity,
-        device[ControllerPropertyKey.HUMIDITY] || 0
+        deviceInfo[ControllerPropertyKey.HUMIDITY] ? deviceInfo[ControllerPropertyKey.HUMIDITY] / 100 : 0
       );
     }
     
     // Update ports
-    if (device[ControllerPropertyKey.PORTS]) {
-      for (const port of device[ControllerPropertyKey.PORTS]) {
+    if (deviceInfo && deviceInfo[ControllerPropertyKey.PORTS]) {
+      for (const port of deviceInfo[ControllerPropertyKey.PORTS]) {
         const portNumber = port[PortPropertyKey.PORT];
         const service = this.portServices.get(portNumber);
         
@@ -296,8 +304,8 @@ export class ACInfinityController {
     }
     
     // Update additional sensors
-    if (device[ControllerPropertyKey.SENSORS]) {
-      for (const sensor of device[ControllerPropertyKey.SENSORS]) {
+    if (deviceInfo && deviceInfo[ControllerPropertyKey.SENSORS]) {
+      for (const sensor of deviceInfo[ControllerPropertyKey.SENSORS]) {
         this.updateSensor(sensor);
       }
     }

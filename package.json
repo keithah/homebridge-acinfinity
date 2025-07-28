@@ -1,6 +1,6 @@
 {
   "name": "homebridge-acinfinity",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Homebridge plugin for AC Infinity controllers",
   "main": "dist/index.js",
   "scripts": {
