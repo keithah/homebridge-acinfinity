@@ -1,6 +1,6 @@
 {
   "name": "homebridge-acinfinity",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Homebridge plugin for AC Infinity controllers",
   "main": "dist/index.js",
   "scripts": {
@@ -11,7 +11,9 @@
   },
   "files": [
     "dist",
-    "config.schema.json"
+    "config.schema.json",
+    "CHANGELOG.md",
+    "API.md"
   ],
   "keywords": [
     "homebridge-plugin",
@@ -32,6 +34,7 @@
     "url": "https://github.com/keithah/homebridge-acinfinity/issues"
   },
   "homepage": "https://github.com/keithah/homebridge-acinfinity#readme",
+  "changelog": "https://github.com/keithah/homebridge-acinfinity/blob/master/CHANGELOG.md",
   "devDependencies": {
     "@types/node": "^24.1.0",
     "homebridge": "^1.11.0",
