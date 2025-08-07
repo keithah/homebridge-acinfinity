@@ -251,31 +251,51 @@ export class ACInfinityClient {
       this.log.debug(`[setDeviceModeSettings] Final settings to be sent: ${JSON.stringify(settings)}`);
     }
 
-    try {
-      const params = new URLSearchParams();
-      for (const [key, value] of Object.entries(settings)) {
-        params.append(key, String(value));
-      }
-      
-      if (this.debug) {
-        this.log.debug(`[setDeviceModeSettings] Request params: ${params.toString()}`);
-      }
+    // Retry logic to handle rate limiting - matches Home Assistant implementation
+    let tryCount = 0;
+    while (true) {
+      try {
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(settings)) {
+          params.append(key, String(value));
+        }
+        
+        if (this.debug) {
+          this.log.debug(`[setDeviceModeSettings] Request params: ${params.toString()}`);
+        }
 
-      const response = await this.axios.post(
-        API_URL_ADD_DEV_MODE,
-        params,
-        { headers: this.getAuthHeaders() }
-      );
+        const response = await this.axios.post(
+          API_URL_ADD_DEV_MODE,
+          params,
+          { headers: this.getAuthHeaders() }
+        );
 
-      if (response.data.code !== 200) {
-        throw new ACInfinityClientRequestFailed(response.data);
+        if (response.data.code !== 200) {
+          throw new ACInfinityClientRequestFailed(response.data);
+        }
+        
+        // Success - exit the retry loop
+        return;
+      } catch (error) {
+        if (error instanceof ACInfinityClientError) {
+          // Check if it's a rate limiting error that we should retry
+          const isRateLimitError = error instanceof ACInfinityClientRequestFailed && 
+            (error.response?.code === 403 || error.response?.msg?.includes('Data saving failed'));
+          
+          if (isRateLimitError && tryCount < 2) {
+            tryCount++;
+            this.log.warn(`API rate limit hit, retrying attempt ${tryCount}/3 after 1 second delay`);
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+            continue; // Retry the request
+          }
+          
+          // Non-retryable error or max retries exceeded
+          throw error;
+        }
+        
+        this.log.error('Set device mode settings error:', error);
+        throw new ACInfinityClientCannotConnect();
       }
-    } catch (error) {
-      if (error instanceof ACInfinityClientError) {
-        throw error;
-      }
-      this.log.error('Set device mode settings error:', error);
-      throw new ACInfinityClientCannotConnect();
     }
   }
 

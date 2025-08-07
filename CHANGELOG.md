@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.5] - 2025-08-07
+
+### Fixed
+- **API Rate Limiting**: Fixed 403 "Data saving failed" errors when setting fan speed
+  - Added retry logic with 1-second delays (up to 3 attempts) matching Home Assistant implementation
+  - Specifically handles rate limiting errors from AC Infinity API
+  - Prevents rapid API calls from failing with "Please try again later" messages
+  - Improves reliability when HomeKit makes multiple consecutive speed changes
+
+### Technical Changes
+- Updated `setDeviceModeSettings()` with intelligent retry mechanism
+- Added proper error detection for rate limiting vs other API failures
+- Enhanced logging to show retry attempts and rate limit warnings
+
 ## [1.2.4] - 2025-08-07
 
 ### Fixed
