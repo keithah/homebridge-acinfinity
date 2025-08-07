@@ -51,6 +51,7 @@ Add the following to your Homebridge `config.json`:
 - `password` (required): Your AC Infinity account password
 - `pollingInterval` (optional): How often to poll for updates in seconds (default: 10, min: 5, max: 600)
 - `host` (optional): API host URL (default: "http://www.acinfinityserver.com")
+- `debug` (optional): Enable debug logging for troubleshooting API issues (default: false)
 
 ## Supported Devices
 
@@ -87,6 +88,17 @@ Add the following to your Homebridge `config.json`:
 1. **Authentication Failed**: Ensure your email and password are correct
 2. **No Devices Found**: Make sure your devices are online and accessible through the AC Infinity app
 3. **Slow Updates**: Try adjusting the polling interval in the configuration
+4. **API Errors (403 Forbidden)**: Enable debug mode to see detailed API requests and responses:
+   ```json
+   {
+     "platform": "ACInfinity",
+     "name": "AC Infinity",
+     "email": "your-email@example.com",
+     "password": "your-password",
+     "debug": true
+   }
+   ```
+   This will log all API requests/responses to help diagnose issues with "Data saving failed" errors
 
 ## Credits
 

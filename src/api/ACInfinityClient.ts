@@ -42,11 +42,13 @@ export class ACInfinityClient {
   private readonly password: string;
   private userId: string | null = null;
   private readonly axios: AxiosInstance;
+  private readonly debug: boolean;
 
-  constructor(host: string, email: string, password: string, private readonly log: Logger) {
+  constructor(host: string, email: string, password: string, private readonly log: Logger, debug = false) {
     this.host = host;
     this.email = email;
     this.password = password;
+    this.debug = debug;
     
     this.axios = axios.create({
       baseURL: host,
@@ -56,6 +58,42 @@ export class ACInfinityClient {
         'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
       },
     });
+
+    if (this.debug) {
+      // Add request interceptor for debugging
+      this.axios.interceptors.request.use(
+        (config) => {
+          this.log.debug(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
+          this.log.debug(`[API Request Headers] ${JSON.stringify(config.headers)}`);
+          if (config.data) {
+            this.log.debug(`[API Request Body] ${config.data}`);
+          }
+          return config;
+        },
+        (error) => {
+          this.log.debug(`[API Request Error] ${error.message}`);
+          return Promise.reject(error);
+        }
+      );
+
+      // Add response interceptor for debugging
+      this.axios.interceptors.response.use(
+        (response) => {
+          this.log.debug(`[API Response] ${response.status} ${response.statusText}`);
+          this.log.debug(`[API Response Data] ${JSON.stringify(response.data)}`);
+          return response;
+        },
+        (error) => {
+          if (error.response) {
+            this.log.debug(`[API Response Error] ${error.response.status} ${error.response.statusText}`);
+            this.log.debug(`[API Response Error Data] ${JSON.stringify(error.response.data)}`);
+          } else {
+            this.log.debug(`[API Response Error] ${error.message}`);
+          }
+          return Promise.reject(error);
+        }
+      );
+    }
   }
 
   async login(): Promise<void> {
@@ -159,7 +197,16 @@ export class ACInfinityClient {
     portId: number,
     keyValues: Array<[string, number]>
   ): Promise<void> {
+    if (this.debug) {
+      this.log.debug(`[setDeviceModeSettings] Called with deviceId: ${deviceId}, portId: ${portId}`);
+      this.log.debug(`[setDeviceModeSettings] Key-value pairs: ${JSON.stringify(keyValues)}`);
+    }
+    
     const settings = await this.getDeviceModeSettingsList(deviceId, portId);
+    
+    if (this.debug) {
+      this.log.debug(`[setDeviceModeSettings] Current settings before modification: ${JSON.stringify(settings)}`);
+    }
 
     // Remove fields that are not part of update payload
     const fieldsToRemove = [
@@ -200,10 +247,18 @@ export class ACInfinityClient {
       }
     }
 
+    if (this.debug) {
+      this.log.debug(`[setDeviceModeSettings] Final settings to be sent: ${JSON.stringify(settings)}`);
+    }
+
     try {
       const params = new URLSearchParams();
       for (const [key, value] of Object.entries(settings)) {
         params.append(key, String(value));
+      }
+      
+      if (this.debug) {
+        this.log.debug(`[setDeviceModeSettings] Request params: ${params.toString()}`);
       }
 
       const response = await this.axios.post(

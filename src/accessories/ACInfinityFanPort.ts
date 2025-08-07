@@ -105,7 +105,13 @@ export class ACInfinityFanPort {
   async setSpeed(value: CharacteristicValue): Promise<void> {
     try {
       const speed = Math.round(Number(value) / 10); // Convert 0-100 to 0-10
+      if (this.platform.config.debug) {
+        this.platform.log.debug(`[FanPort] Setting speed for port ${this.portNumber} on device ${this.deviceId} to ${speed} (HomeKit value: ${value})`);
+      }
       await this.platform.client.setDeviceModeSettings(this.deviceId, this.portNumber, [[PortControlKey.ON_SPEED, speed]]);
+      if (this.platform.config.debug) {
+        this.platform.log.debug(`[FanPort] Successfully set speed for port ${this.portNumber}`);
+      }
     } catch (error) {
       this.platform.log.error('Failed to set port speed:', error);
       throw new this.platform.api.hap.HapStatusError(-70402);

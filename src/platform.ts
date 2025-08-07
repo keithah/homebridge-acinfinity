@@ -21,6 +21,7 @@ export interface ACInfinityPlatformConfig extends PlatformConfig {
   host?: string;
   pollingInterval?: number;
   exposeSensors?: boolean;
+  debug?: boolean;
 }
 
 export class ACInfinityPlatform implements DynamicPlatformPlugin {
@@ -46,7 +47,7 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
     
     // Initialize client
     const host = config.host || 'http://www.acinfinityserver.com';
-    this.client = new ACInfinityClient(host, config.email, config.password, log);
+    this.client = new ACInfinityClient(host, config.email, config.password, log, config.debug);
     
     // Set polling interval (default 10 seconds, min 5, max 600)
     this.pollingInterval = Math.max(5, Math.min(600, config.pollingInterval || 10)) * 1000;
