@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Uses real-time `loadState` value instead of fetching settings from API
   - Rotation speed updates automatically when port state changes
   - Resolves issue where Auto mode displayed max speed instead of actual running speed
+- Reduced verbose logging in normal operation
+  - Device JSON data now only shown in debug mode
+  - Cache restoration messages moved to debug level
+  - Removed duplicate login messages
 
 ## [1.2.1] - 2025-01-28
 
