@@ -92,14 +92,22 @@ export class ACInfinityFanPort {
   }
 
   async getSpeed(): Promise<CharacteristicValue> {
-    try {
-      const settings = await this.platform.client.getDeviceModeSettingsList(this.deviceId, this.portNumber);
-      const speed = settings[PortControlKey.ON_SPEED] || 0;
-      return speed * 10; // Convert 0-10 to 0-100
-    } catch (error) {
-      this.platform.log.error('Failed to get port speed:', error);
+    const port = this.accessory.context.port;
+    if (!port) {
+      if (this.platform.config.debug) {
+        this.platform.log.debug(`[FanPort] No port data available for port ${this.portNumber}`);
+      }
       return 0;
     }
+    
+    // Use the actual current state (loadState) which represents the real-time fan speed
+    const currentState = port[PortPropertyKey.STATE] || 0;
+    
+    if (this.platform.config.debug) {
+      this.platform.log.debug(`[FanPort] Getting speed for port ${this.portNumber}: currentState=${currentState}, HomeKit value=${currentState * 10}`);
+    }
+    
+    return currentState * 10; // Convert 0-10 to 0-100
   }
 
   async setSpeed(value: CharacteristicValue): Promise<void> {
@@ -123,8 +131,12 @@ export class ACInfinityFanPort {
     this.accessory.context.port = port;
     
     // Update characteristics
-    const state = port[PortPropertyKey.STATE];
+    const state = port[PortPropertyKey.STATE] || 0;
     const isActive = state > 0;
+    
+    if (this.platform.config.debug) {
+      this.platform.log.debug(`[FanPort] Updating port ${this.portNumber}: state=${state}, isActive=${isActive}`);
+    }
     
     this.fanService.updateCharacteristic(
       this.platform.Characteristic.Active, 
@@ -135,6 +147,12 @@ export class ACInfinityFanPort {
       this.platform.Characteristic.CurrentFanState,
       isActive ? this.platform.Characteristic.CurrentFanState.BLOWING_AIR
         : this.platform.Characteristic.CurrentFanState.IDLE
+    );
+    
+    // Update rotation speed to reflect actual current speed
+    this.fanService.updateCharacteristic(
+      this.platform.Characteristic.RotationSpeed,
+      state * 10 // Convert 0-10 to 0-100
     );
   }
 }
