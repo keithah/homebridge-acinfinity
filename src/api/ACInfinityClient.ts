@@ -1,4 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
+import { Agent } from 'http';
+import { Agent as HttpsAgent } from 'https';
 import { Logger } from 'homebridge';
 import {
   API_URL_LOGIN,
@@ -44,6 +46,8 @@ export class ACInfinityClient {
   private readonly axios: AxiosInstance;
   private readonly debug: boolean;
   private lastRequestTime: number = 0;
+  private readonly httpAgent: Agent;
+  private readonly httpsAgent: HttpsAgent;
 
   constructor(host: string, email: string, password: string, private readonly log: Logger, debug = false) {
     this.host = host;
@@ -51,19 +55,33 @@ export class ACInfinityClient {
     this.password = password;
     this.debug = debug;
     
+    // Create HTTP agents with proper keepalive like Home Assistant's aiohttp
+    this.httpAgent = new Agent({
+      keepAlive: true,
+      maxSockets: 1, // Single connection per host like aiohttp ClientSession
+      maxFreeSockets: 1,
+      timeout: 60000, // Keep connections alive for 60s
+    });
+    
+    this.httpsAgent = new HttpsAgent({
+      keepAlive: true,
+      maxSockets: 1,
+      maxFreeSockets: 1,
+      timeout: 60000,
+    });
+
     this.axios = axios.create({
       baseURL: host,
-      timeout: 15000, // Increased from 10s to 15s
+      timeout: 15000,
       headers: {
         'User-Agent': 'ACController/1.8.2 (com.acinfinity.humiture; build:489; iOS 16.5.1) Alamofire/5.4.4',
         'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
       },
-      // Improve connection handling
+      // Enable proper session persistence like Home Assistant
+      httpAgent: this.httpAgent,
+      httpsAgent: this.httpsAgent,
       maxRedirects: 3,
-      validateStatus: (status) => status < 500, // Don't throw on 4xx errors, handle them explicitly
-      // Connection pooling and keepalive
-      httpAgent: undefined, // Let axios handle this
-      httpsAgent: undefined,
+      validateStatus: (status) => status < 500,
     });
 
     if (this.debug) {
@@ -255,56 +273,30 @@ export class ACInfinityClient {
       this.log.debug(`[setDeviceModeSettings] Final settings to be sent: ${JSON.stringify(settings)}`);
     }
 
-    // Add throttling before making the request
-    await this.throttleRequest();
-
-    // Retry logic to handle rate limiting - matches Home Assistant implementation
-    let tryCount = 0;
-    while (true) {
-      try {
-        const params = new URLSearchParams();
-        for (const [key, value] of Object.entries(settings)) {
-          params.append(key, String(value));
-        }
-        
-        if (this.debug) {
-          this.log.debug(`[setDeviceModeSettings] Request params: ${params.toString()}`);
-        }
-
-        const response = await this.axios.post(
-          API_URL_ADD_DEV_MODE,
-          params,
-          { headers: this.getAuthHeaders() }
-        );
-
-        if (response.data.code !== 200) {
-          throw new ACInfinityClientRequestFailed(response.data);
-        }
-        
-        // Success - exit the retry loop
-        return;
-      } catch (error) {
-        if (error instanceof ACInfinityClientError) {
-          // Check if it's a rate limiting error that we should retry
-          const isRateLimitError = error instanceof ACInfinityClientRequestFailed && 
-            (error.response?.code === 403 || error.response?.msg?.includes('Data saving failed'));
-          
-          if (isRateLimitError && tryCount < 4) { // Increased to 5 total attempts
-            tryCount++;
-            // Exponential backoff: 2s, 4s, 6s, 8s
-            const delayMs = Math.min(2000 + (tryCount * 2000), 10000);
-            this.log.warn(`API rate limit hit, retrying attempt ${tryCount}/5 after ${delayMs/1000} second delay`);
-            await new Promise(resolve => setTimeout(resolve, delayMs));
-            continue; // Retry the request
-          }
-          
-          // Non-retryable error or max retries exceeded
-          throw error;
-        }
-        
-        // Use enhanced error handling for HTTP errors
-        this.handleHttpError(error, 'setDeviceModeSettings');
+    try {
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(settings)) {
+        params.append(key, String(value));
       }
+      
+      if (this.debug) {
+        this.log.debug(`[setDeviceModeSettings] Request params: ${params.toString()}`);
+      }
+
+      const response = await this.axios.post(
+        API_URL_ADD_DEV_MODE,
+        params,
+        { headers: this.getAuthHeaders() }
+      );
+
+      if (response.data.code !== 200) {
+        throw new ACInfinityClientRequestFailed(response.data);
+      }
+    } catch (error) {
+      if (error instanceof ACInfinityClientError) {
+        throw error;
+      }
+      this.handleHttpError(error, 'setDeviceModeSettings');
     }
   }
 
@@ -466,8 +458,9 @@ export class ACInfinityClient {
       this.axios.interceptors.request.clear();
       this.axios.interceptors.response.clear();
       
-      // Note: Axios doesn't have a built-in cleanup method like aiohttp,
-      // but clearing interceptors and resetting state helps prevent issues
+      // Properly close HTTP agents and their connection pools
+      this.httpAgent.destroy();
+      this.httpsAgent.destroy();
       
     } catch (error) {
       this.log.warn('Error during client cleanup:', error);

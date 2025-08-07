@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.8] - 2025-08-07
+
+### Fixed
+- **HTTP Session Persistence**: Implemented proper connection keepalive matching Home Assistant behavior
+  - Added persistent HTTP/HTTPS agents with keepalive enabled
+  - Single connection per host prevents connection-based rate limiting
+  - Matches Home Assistant's aiohttp ClientSession behavior
+  - Eliminates 403 "Data saving failed" errors caused by multiple connections appearing as different clients
+- **Removed Aggressive Retry Logic**: Eliminated retry mechanism that was cascading failures
+  - Removed exponential backoff retry that was making rate limiting worse
+  - Simplified error handling to prevent request amplification
+  - Cleaner failure handling reduces API load during issues
+
+### Technical Changes
+- Added proper HTTP Agent configuration with maxSockets: 1 and keepalive
+- Enhanced cleanup method to properly dispose of HTTP connection pools
+- Removed throttling and retry logic that was interfering with natural request flow
+- Improved session management to match official AC Infinity app behavior
+
+### Background
+The root cause was connection-based rate limiting. AC Infinity's servers treat each new HTTP connection as a separate client, so axios creating multiple connections triggered rate limits while Home Assistant's persistent aiohttp sessions worked fine. This fix ensures all requests use a single persistent connection like the official app and Home Assistant.
+
 ## [1.2.7] - 2025-08-07
 
 ### Fixed
