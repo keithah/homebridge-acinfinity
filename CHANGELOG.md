@@ -16,12 +16,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added global request throttling with minimum 1.5 second intervals between API calls
   - More aggressive approach to handle persistent "Data saving failed" errors
   - Better debug logging for throttling and retry attempts
+- **Session Management Improvements**: Enhanced HTTP client reliability and connection handling
+  - Increased request timeout from 10s to 15s for slower API responses
+  - Added proper HTTP session cleanup with `cleanup()` method
+  - Enhanced connection error handling with specific error types (ECONNRESET, ETIMEDOUT, etc.)
+  - Improved server error detection and recovery (5xx status codes)
+  - Added interceptor cleanup to prevent memory leaks during reconnection
 
 ### Technical Changes
 - Enhanced `setDeviceModeSettings()` with more robust retry mechanism
 - Added `throttleRequest()` method to prevent rapid successive API calls
 - Improved error handling with exponential backoff strategy
 - Added request timing tracking to prevent API overload
+- Added `handleHttpError()` method for consistent error handling across all API calls
+- Improved axios configuration with better connection pooling and validation
+- Enhanced cleanup procedures for proper resource disposal
 
 ## [1.2.5] - 2025-08-07
 

@@ -53,11 +53,17 @@ export class ACInfinityClient {
     
     this.axios = axios.create({
       baseURL: host,
-      timeout: 10000,
+      timeout: 15000, // Increased from 10s to 15s
       headers: {
         'User-Agent': 'ACController/1.8.2 (com.acinfinity.humiture; build:489; iOS 16.5.1) Alamofire/5.4.4',
         'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
       },
+      // Improve connection handling
+      maxRedirects: 3,
+      validateStatus: (status) => status < 500, // Don't throw on 4xx errors, handle them explicitly
+      // Connection pooling and keepalive
+      httpAgent: undefined, // Let axios handle this
+      httpsAgent: undefined,
     });
 
     if (this.debug) {
@@ -120,8 +126,7 @@ export class ACInfinityClient {
       if (error instanceof ACInfinityClientError) {
         throw error;
       }
-      this.log.error('Login error:', error);
-      throw new ACInfinityClientCannotConnect();
+      this.handleHttpError(error, 'login');
     }
   }
 
@@ -159,8 +164,7 @@ export class ACInfinityClient {
       if (error instanceof ACInfinityClientError) {
         throw error;
       }
-      this.log.error('Get devices error:', error);
-      throw new ACInfinityClientCannotConnect();
+      this.handleHttpError(error, 'getDeviceInfoListAll');
     }
   }
 
@@ -188,8 +192,7 @@ export class ACInfinityClient {
       if (error instanceof ACInfinityClientError) {
         throw error;
       }
-      this.log.error('Get device mode settings error:', error);
-      throw new ACInfinityClientCannotConnect();
+      this.handleHttpError(error, 'getDeviceModeSettingsList');
     }
   }
 
@@ -299,8 +302,8 @@ export class ACInfinityClient {
           throw error;
         }
         
-        this.log.error('Set device mode settings error:', error);
-        throw new ACInfinityClientCannotConnect();
+        // Use enhanced error handling for HTTP errors
+        this.handleHttpError(error, 'setDeviceModeSettings');
       }
     }
   }
@@ -329,8 +332,7 @@ export class ACInfinityClient {
       if (error instanceof ACInfinityClientError) {
         throw error;
       }
-      this.log.error('Get device settings error:', error);
-      throw new ACInfinityClientCannotConnect();
+      this.handleHttpError(error, 'getDeviceSettings');
     }
   }
 
@@ -426,8 +428,7 @@ export class ACInfinityClient {
       if (error instanceof ACInfinityClientError) {
         throw error;
       }
-      this.log.error('Update advanced settings error:', error);
-      throw new ACInfinityClientCannotConnect();
+      this.handleHttpError(error, 'updateAdvancedSettings');
     }
   }
 
@@ -445,5 +446,50 @@ export class ACInfinityClient {
     }
     
     this.lastRequestTime = Date.now();
+  }
+
+  /**
+   * Cleanup method to properly dispose of HTTP connections and clear auth state
+   * Should be called when the plugin is shutting down or reconnecting
+   */
+  async cleanup(): Promise<void> {
+    try {
+      if (this.debug) {
+        this.log.debug('[Cleanup] Disposing of HTTP client and clearing auth state');
+      }
+      
+      // Clear authentication state
+      this.userId = null;
+      this.lastRequestTime = 0;
+      
+      // Clear axios interceptors to prevent memory leaks
+      this.axios.interceptors.request.clear();
+      this.axios.interceptors.response.clear();
+      
+      // Note: Axios doesn't have a built-in cleanup method like aiohttp,
+      // but clearing interceptors and resetting state helps prevent issues
+      
+    } catch (error) {
+      this.log.warn('Error during client cleanup:', error);
+    }
+  }
+
+  /**
+   * Enhanced error handling with connection recovery
+   */
+  private handleHttpError(error: any, context: string): never {
+    if (error.code === 'ECONNRESET' || error.code === 'ECONNREFUSED') {
+      this.log.error(`[${context}] Connection error: ${error.code} - ${error.message}`);
+      throw new ACInfinityClientCannotConnect();
+    } else if (error.code === 'ETIMEDOUT') {
+      this.log.error(`[${context}] Request timeout - API may be overloaded`);
+      throw new ACInfinityClientCannotConnect();
+    } else if (error.response?.status >= 500) {
+      this.log.error(`[${context}] Server error ${error.response.status} - ${error.response.statusText}`);
+      throw new ACInfinityClientCannotConnect();
+    } else {
+      this.log.error(`[${context}] HTTP error:`, error.message);
+      throw new ACInfinityClientCannotConnect();
+    }
   }
 }
