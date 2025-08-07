@@ -1,12 +1,11 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 jobs:
-  release:
+  publish:
     runs-on: ubuntu-latest
     
     steps:
@@ -30,44 +29,3 @@ jobs:
       run: npm publish
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-    
-    - name: Create GitHub Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        body: |
-          ## What's Changed
-          
-          See the [CHANGELOG.md](https://github.com/keithah/homebridge-acinfinity/blob/master/CHANGELOG.md) for detailed release notes.
-          
-          ## Installation
-          
-          ```bash
-          npm install -g homebridge-acinfinity
-          ```
-          
-          Or install via Homebridge UI by searching for "AC Infinity".
-          
-          ## Configuration
-          
-          Add the following to your Homebridge config:
-          
-          ```json
-          {
-            "platform": "ACInfinity",
-            "name": "AC Infinity",
-            "email": "your-email@example.com",
-            "password": "your-password"
-          }
-          ```
-          
-          ## Support
-          
-          - 📖 [README](https://github.com/keithah/homebridge-acinfinity#readme)
-          - 🐛 [Issues](https://github.com/keithah/homebridge-acinfinity/issues)
-          - 📋 [API Documentation](https://github.com/keithah/homebridge-acinfinity/blob/master/API.md)
-        draft: false
-        prerelease: false
