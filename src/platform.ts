@@ -78,14 +78,16 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
       if (!this.client.isLoggedIn()) {
         this.log.info('Logging into AC Infinity API...');
         await this.client.login();
-        this.log.info('Successfully logged in to AC Infinity API');
+        this.log.debug('Successfully logged in to AC Infinity API');
       }
 
       // Get all devices
-      this.log.info('Fetching device list from AC Infinity API...');
+      this.log.debug('Fetching device list from AC Infinity API...');
       const devices = await this.client.getDevicesListAll();
       this.log.info(`Found ${devices.length} device(s) from AC Infinity API`);
-      this.log.info('Device data:', JSON.stringify(devices, null, 2));
+      if (this.config.debug) {
+        this.log.debug('Device data:', JSON.stringify(devices, null, 2));
+      }
       
       // Process each device and create individual accessories for each port
       for (const device of devices) {
@@ -109,7 +111,7 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
 
             if (existingAccessory) {
               // Update existing port accessory
-              this.log.info('Restoring existing port accessory from cache:', existingAccessory.displayName);
+              this.log.debug('Restoring existing port accessory from cache:', existingAccessory.displayName);
               existingAccessory.context.device = device;
               existingAccessory.context.port = port;
               existingAccessory.context.deviceId = device.devId;
@@ -141,7 +143,7 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
 
             const existingTempAccessory = this.accessories.find(accessory => accessory.UUID === tempUuid);
             if (existingTempAccessory) {
-              this.log.info('Restoring existing temperature sensor from cache:', existingTempAccessory.displayName);
+              this.log.debug('Restoring existing temperature sensor from cache:', existingTempAccessory.displayName);
               existingTempAccessory.context.device = device;
               existingTempAccessory.context.sensorType = 'controller-temp';
               existingTempAccessory.displayName = tempName;
@@ -167,7 +169,7 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
 
             const existingHumidityAccessory = this.accessories.find(accessory => accessory.UUID === humidityUuid);
             if (existingHumidityAccessory) {
-              this.log.info('Restoring existing humidity sensor from cache:', existingHumidityAccessory.displayName);
+              this.log.debug('Restoring existing humidity sensor from cache:', existingHumidityAccessory.displayName);
               existingHumidityAccessory.context.device = device;
               existingHumidityAccessory.context.sensorType = 'controller-humidity';
               existingHumidityAccessory.displayName = humidityName;
