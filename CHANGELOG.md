@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.11] - 2025-08-07
+
+### Fixed
+- **Critical API Fix**: Correctly implemented selective `minversion` header usage matching official AC Infinity app
+  - `minversion: 3.5` header now only included on specific endpoints (getdevModeSettingList, addDevMode)
+  - Fixed 404 errors caused by incorrect API path assumptions
+  - Maintains regular `/api/` paths while using versioning headers selectively
+  - **Eliminates all 403 "Data saving failed" errors with proper official app format**
+
+### Technical Changes  
+- Updated `getAuthHeaders()` to selectively include minversion header based on endpoint
+- Fixed GitHub Actions release workflow to checkout correct tag version
+- Enhanced API implementation to exactly match official app network behavior from Charles capture analysis
+
+### Background
+Analysis of the official AC Infinity mobile app's network traffic revealed that the `minversion` header is only used on specific endpoints and does NOT change the API base path. The app uses regular `/api/` paths with selective header-based versioning, not `/api/3.5/` paths as initially assumed.
+
 ## [1.2.10] - 2025-08-07
 
 ### Fixed

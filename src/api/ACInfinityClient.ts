@@ -152,16 +152,21 @@ export class ACInfinityClient {
     return this.userId !== null;
   }
 
-  private getAuthHeaders(): Record<string, string> {
+  private getAuthHeaders(includeMinVersion = false): Record<string, string> {
     if (!this.userId) {
       throw new ACInfinityClientError('Client is not logged in');
     }
-    return {
+    const headers: Record<string, string> = {
       token: this.userId,
       phoneType: '1',
       appVersion: '1.9.7',
-      minversion: '3.5',
     };
+    
+    if (includeMinVersion) {
+      headers.minversion = '3.5';
+    }
+    
+    return headers;
   }
 
   async getDevicesListAll(): Promise<any[]> {
@@ -201,7 +206,7 @@ export class ACInfinityClient {
           devId: String(deviceId),
           port: String(portId),
         }),
-        { headers: this.getAuthHeaders() }
+        { headers: this.getAuthHeaders(true) } // Include minversion for this endpoint
       );
 
       if (response.data.code !== 200) {
@@ -328,7 +333,7 @@ export class ACInfinityClient {
       const response = await this.axios.post(
         API_URL_ADD_DEV_MODE,
         params,
-        { headers: this.getAuthHeaders() }
+        { headers: this.getAuthHeaders(true) } // Include minversion for this endpoint
       );
 
       if (response.data.code !== 200) {
