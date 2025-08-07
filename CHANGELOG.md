@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.4] - 2025-08-07
+
+### Fixed
+- **Critical Fix**: Fan speed reporting now shows actual current speed instead of always 10%
+  - Fixed bug introduced in v1.2.3 where `loadState` (0/1) was used instead of actual power level
+  - Now uses `speak` field which contains the real current power level (0-10)
+  - Fan speed now accurately reflects actual device operation in all modes
+- **Auto Mode Detection**: Target fan state now properly detects and displays Auto mode
+  - Added support for `curMode` field to detect current operating mode
+  - Auto mode (`curMode: 3`) and VPD mode (`curMode: 8`) show as "Auto" in HomeKit
+  - All other modes (On, Off, Timer, Cycle, Schedule) show as "Manual"
+  - Target fan state updates automatically when device mode changes
+
+### Added
+- Enhanced debug logging with current power level and operating mode information
+- New `PortMode` constants for better mode detection and future extensibility
+
+### Technical Changes
+- Added `CURRENT_MODE: 'curMode'` to `PortPropertyKey` constants
+- Added `PortMode` enum with all supported AC Infinity modes
+- Updated `getSpeed()` to use `speak` field instead of `loadState`
+- Updated `getTargetState()` to properly detect Auto vs Manual modes
+- Updated `updatePort()` to refresh both rotation speed and target fan state
+
 ## [1.2.3] - 2025-08-07
 
 ### Added

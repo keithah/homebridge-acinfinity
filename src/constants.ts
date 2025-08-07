@@ -58,6 +58,18 @@ export const PortPropertyKey = {
   ONLINE: 'online',
   STATE: 'loadState',
   REMAINING_TIME: 'remainTime',
+  CURRENT_MODE: 'curMode',
+};
+
+export const PortMode = {
+  OFF: 1,
+  ON: 2,
+  AUTO: 3,
+  TIMER_TO_ON: 4,
+  TIMER_TO_OFF: 5,
+  CYCLE: 6,
+  SCHEDULE: 7,
+  VPD: 8,
 };
 
 export const PortControlKey = {

@@ -1,6 +1,6 @@
 import { PlatformAccessory, CharacteristicValue } from 'homebridge';
 import { ACInfinityPlatform } from '../platform';
-import { ControllerPropertyKey, PortPropertyKey, PortControlKey } from '../constants';
+import { ControllerPropertyKey, PortPropertyKey, PortControlKey, PortMode } from '../constants';
 
 export class ACInfinityFanPort {
   private readonly platform: ACInfinityPlatform;
@@ -82,8 +82,24 @@ export class ACInfinityFanPort {
   }
 
   async getTargetState(): Promise<CharacteristicValue> {
-    // For simplicity, we'll use AUTO mode
-    return this.platform.Characteristic.TargetFanState.AUTO;
+    const port = this.accessory.context.port;
+    if (!port) {
+      return this.platform.Characteristic.TargetFanState.MANUAL;
+    }
+
+    const currentMode = port[PortPropertyKey.CURRENT_MODE];
+    
+    if (this.platform.config.debug) {
+      this.platform.log.debug(`[FanPort] Getting target state for port ${this.portNumber}: currentMode=${currentMode}`);
+    }
+    
+    // Check if it's in Auto mode (including VPD which is also auto-controlled)
+    if (currentMode === PortMode.AUTO || currentMode === PortMode.VPD) {
+      return this.platform.Characteristic.TargetFanState.AUTO;
+    }
+    
+    // All other modes (On, Off, Timer, Cycle, Schedule) are considered manual
+    return this.platform.Characteristic.TargetFanState.MANUAL;
   }
 
   async setTargetState(value: CharacteristicValue): Promise<void> {
@@ -100,14 +116,14 @@ export class ACInfinityFanPort {
       return 0;
     }
     
-    // Use the actual current state (loadState) which represents the real-time fan speed
-    const currentState = port[PortPropertyKey.STATE] || 0;
+    // Use the 'speak' field which represents the actual current power level (0-10)
+    const currentPower = port[PortPropertyKey.SPEAK] || 0;
     
     if (this.platform.config.debug) {
-      this.platform.log.debug(`[FanPort] Getting speed for port ${this.portNumber}: currentState=${currentState}, HomeKit value=${currentState * 10}`);
+      this.platform.log.debug(`[FanPort] Getting speed for port ${this.portNumber}: currentPower=${currentPower}, HomeKit value=${currentPower * 10}`);
     }
     
-    return currentState * 10; // Convert 0-10 to 0-100
+    return currentPower * 10; // Convert 0-10 to 0-100
   }
 
   async setSpeed(value: CharacteristicValue): Promise<void> {
@@ -135,7 +151,9 @@ export class ACInfinityFanPort {
     const isActive = state > 0;
     
     if (this.platform.config.debug) {
-      this.platform.log.debug(`[FanPort] Updating port ${this.portNumber}: state=${state}, isActive=${isActive}`);
+      const currentPower = port[PortPropertyKey.SPEAK] || 0;
+      const currentMode = port[PortPropertyKey.CURRENT_MODE];
+      this.platform.log.debug(`[FanPort] Updating port ${this.portNumber}: state=${state}, isActive=${isActive}, currentPower=${currentPower}, currentMode=${currentMode}`);
     }
     
     this.fanService.updateCharacteristic(
@@ -149,10 +167,19 @@ export class ACInfinityFanPort {
         : this.platform.Characteristic.CurrentFanState.IDLE
     );
     
-    // Update rotation speed to reflect actual current speed
+    // Update rotation speed to reflect actual current power
+    const currentPower = port[PortPropertyKey.SPEAK] || 0;
     this.fanService.updateCharacteristic(
       this.platform.Characteristic.RotationSpeed,
-      state * 10 // Convert 0-10 to 0-100
+      currentPower * 10 // Convert 0-10 to 0-100
+    );
+    
+    // Update target fan state based on current mode
+    const currentMode = port[PortPropertyKey.CURRENT_MODE];
+    const isAutoMode = currentMode === PortMode.AUTO || currentMode === PortMode.VPD;
+    this.fanService.updateCharacteristic(
+      this.platform.Characteristic.TargetFanState,
+      isAutoMode ? this.platform.Characteristic.TargetFanState.AUTO : this.platform.Characteristic.TargetFanState.MANUAL
     );
   }
 }
