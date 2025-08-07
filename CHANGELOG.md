@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.13] - 2025-08-07
+
+### Fixed
+- **Speed Caching Solution**: Implemented intelligent speed caching to prevent HomeKit from reverting to stale values
+  - Returns the speed you just set for 5 seconds after API calls
+  - Prevents display reverting due to AC Infinity's 5+ second device update delay
+  - Maintains correct HomeKit display while device processes changes
+- **API Parameter Optimization**: Updated to set both `onSelfSpead` and `onSpead` fields for maximum compatibility
+- **Root Cause Resolution**: Addressed the core issue where device API returns stale data immediately after speed changes
+
+### Technical Changes
+- Added `lastSetSpeed` and `lastSetTime` caching in `ACInfinityFanPort`
+- Enhanced `getSpeed()` method to return cached values for 5 seconds after API calls
+- Updated both `setSpeed()` and `setActive()` methods to cache their values
+- Improved API payload to match working test scenarios more precisely
+
+### Background
+Testing revealed that AC Infinity devices have a 5+ second delay before reporting updated speed values via the API. HomeKit's immediate polling after speed changes was getting stale data, causing the display to revert. This release implements intelligent caching to maintain the correct display while the device processes the change.
+
 ## [1.2.12] - 2025-08-07
 
 ### Added
