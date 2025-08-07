@@ -36,6 +36,8 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
   private readonly sensorInstances = new Map<string, ACInfinitySensor>();
   private pollingInterval: number;
   private updateTimer?: NodeJS.Timeout;
+  private requestQueue: Array<() => Promise<any>> = [];
+  private isProcessingQueue = false;
 
   constructor(
     public readonly log: Logger,
@@ -220,10 +222,10 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
   async updateDevices() {
     try {
       if (!this.client.isLoggedIn()) {
-        await this.client.login();
+        await this.queueRequest(() => this.client.login());
       }
 
-      const devices = await this.client.getDevicesListAll();
+      const devices = await this.queueRequest(() => this.client.getDevicesListAll());
       
       for (const device of devices) {
         const deviceInfo = device[ControllerPropertyKey.DEVICE_INFO];
@@ -274,5 +276,56 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
     } catch (error) {
       this.log.error('Failed to update devices:', error);
     }
+  }
+
+  /**
+   * Queue an API request to prevent simultaneous calls and rate limiting
+   */
+  async queueRequest<T>(requestFn: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.requestQueue.push(async () => {
+        try {
+          const result = await requestFn();
+          resolve(result);
+          return result;
+        } catch (error) {
+          reject(error);
+          throw error;
+        }
+      });
+      this.processQueue();
+    });
+  }
+
+  /**
+   * Process the request queue sequentially with proper spacing
+   */
+  private async processQueue(): Promise<void> {
+    if (this.isProcessingQueue || this.requestQueue.length === 0) {
+      return;
+    }
+
+    this.isProcessingQueue = true;
+
+    while (this.requestQueue.length > 0) {
+      const request = this.requestQueue.shift();
+      if (request) {
+        try {
+          if (this.config.debug) {
+            this.log.debug(`[Request Queue] Processing request (${this.requestQueue.length} remaining in queue)`);
+          }
+          await request();
+        } catch (error) {
+          this.log.error('[Request Queue] Request failed:', error);
+        }
+        
+        // Add a small delay between requests to prevent overwhelming the API
+        if (this.requestQueue.length > 0) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+    }
+
+    this.isProcessingQueue = false;
   }
 }

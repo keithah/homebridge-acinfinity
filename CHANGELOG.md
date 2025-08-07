@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.7] - 2025-08-07
+
+### Fixed
+- **API Request Coordination**: Implemented centralized request queue to prevent rate limiting
+  - Added sequential request processing to eliminate simultaneous API calls
+  - API requests now queued with 500ms spacing between calls
+  - Prevents multiple accessories from overwhelming AC Infinity API simultaneously
+  - Significantly reduces "Data saving failed" (403) errors when changing multiple fan speeds
+  - Better debug logging shows queue status and request processing
+
+### Technical Changes
+- Added `queueRequest()` method to platform for centralized API coordination
+- Updated `setSpeed()` to use request queue instead of direct API calls
+- Updated `updateDevices()` to use queued requests for better coordination
+- Added request queue processing with proper spacing and error handling
+- Enhanced debug logging for request queue operations
+
 ## [1.2.6] - 2025-08-07
 
 ### Fixed
