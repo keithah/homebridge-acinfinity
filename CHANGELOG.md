@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.9] - 2025-08-07
+
+### Fixed
+- **Complete API Rewrite**: Implemented exact official AC Infinity app API format
+  - Updated User-Agent to v1.9.7 matching latest official app
+  - Added required headers: phoneType, appVersion, minversion
+  - Replaced complex settings fetch/modify approach with static payload format
+  - Removed problematic modeSetid field that was causing 403 errors
+  - Uses exact same payload structure as captured from official mobile app
+  - **Eliminates all 403 "Data saving failed" errors**
+
+### Technical Changes
+- Updated `setDeviceModeSettings()` to use official app payload format
+- Removed dependency on `getDeviceModeSettingsList()` for speed changes
+- Added static payload structure with all required fields
+- Enhanced debug logging to show official app format usage
+- Maintains backward compatibility with existing HomeKit integration
+
+### Background
+Analysis of network traffic from the official AC Infinity mobile app revealed they use a completely different API approach than both Home Assistant and our previous implementation. The official app sends a static, predefined payload structure without fetching current settings first, and critically omits the `modeSetid` field that was causing rate limiting issues.
+
 ## [1.2.8] - 2025-08-07
 
 ### Fixed

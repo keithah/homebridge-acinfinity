@@ -74,7 +74,7 @@ export class ACInfinityClient {
       baseURL: host,
       timeout: 15000,
       headers: {
-        'User-Agent': 'ACController/1.8.2 (com.acinfinity.humiture; build:489; iOS 16.5.1) Alamofire/5.4.4',
+        'User-Agent': 'ACController/1.9.7 (com.acinfinity.humiture; build:533; iOS 18.5.0) Alamofire/5.10.2',
         'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
       },
       // Enable proper session persistence like Home Assistant
@@ -158,6 +158,9 @@ export class ACInfinityClient {
     }
     return {
       token: this.userId,
+      phoneType: '1',
+      appVersion: '1.9.7',
+      minversion: '3.5',
     };
   }
 
@@ -224,65 +227,104 @@ export class ACInfinityClient {
       this.log.debug(`[setDeviceModeSettings] Key-value pairs: ${JSON.stringify(keyValues)}`);
     }
     
-    const settings = await this.getDeviceModeSettingsList(deviceId, portId);
-    
-    if (this.debug) {
-      this.log.debug(`[setDeviceModeSettings] Current settings before modification: ${JSON.stringify(settings)}`);
-    }
-
-    // Remove fields that are not part of update payload
-    const fieldsToRemove = [
-      PortControlKey.DEVICE_MAC_ADDR,
-      PortControlKey.IPC_SETTING,
-      PortControlKey.DEV_SETTING,
-    ];
-    
-    for (const key of fieldsToRemove) {
-      delete settings[key];
-    }
-
-    // Add defaulted fields
-    const defaultFields = [
-      PortControlKey.VPD_STATUS,
-      PortControlKey.VPD_NUMS,
-    ];
-    
-    for (const key of defaultFields) {
-      if (!(key in settings)) {
-        settings[key] = 0;
-      }
-    }
-
-    // Convert string IDs to numbers
-    settings[PortControlKey.DEV_ID] = parseInt(settings[PortControlKey.DEV_ID]);
-    settings[PortControlKey.MODE_SET_ID] = parseInt(settings[PortControlKey.MODE_SET_ID]);
-
-    // Apply user changes
+    // Extract the speed value from keyValues (assumes only speed changes for now)
+    let speed = 0;
     for (const [key, value] of keyValues) {
-      settings[key] = value;
-    }
-
-    // Set null values to 0
-    for (const key in settings) {
-      if (settings[key] === null || settings[key] === undefined) {
-        settings[key] = 0;
+      if (key === PortControlKey.ON_SPEED || key === 'onSpead') {
+        speed = value;
+        break;
       }
     }
 
     if (this.debug) {
-      this.log.debug(`[setDeviceModeSettings] Final settings to be sent: ${JSON.stringify(settings)}`);
+      this.log.debug(`[setDeviceModeSettings] Using official app format with speed: ${speed}`);
+    }
+
+    // Use the exact payload format from official AC Infinity app (from Charles capture)
+    const params = new URLSearchParams({
+      acitveTimerOff: '0',
+      acitveTimerOn: '0',
+      activeCycleOff: '0',
+      activeCycleOn: '0',
+      activeHh: '0',
+      activeHt: '0',
+      activeHtVpd: '0',
+      activeHtVpdNums: '0',
+      activeLh: '0',
+      activeLt: '0',
+      activeLtVpd: '0',
+      activeLtVpdNums: '0',
+      atType: '2',
+      co2FanHighSwitch: '0',
+      co2FanHighValue: '0',
+      co2LowSwitch: '0',
+      co2LowValue: '0',
+      devHh: '0',
+      devHt: '0',
+      devHtf: '32',
+      devId: String(deviceId),
+      devLh: '0',
+      devLt: '0',
+      devLtf: '32',
+      devMacAddr: '',
+      ecOrTds: '0',
+      ecTdsLowSwitchEc: '0',
+      ecTdsLowSwitchTds: '0',
+      ecTdsLowValueEcMs: '1',
+      ecTdsLowValueEcUs: '0',
+      ecTdsLowValueTdsPpm: '0',
+      ecTdsLowValueTdsPpt: '1',
+      ecUnit: '0',
+      externalPort: String(portId),
+      hTrend: '0',
+      humidity: '0',
+      isOpenAutomation: '0',
+      masterPort: '0',
+      modeType: '0',
+      moistureLowSwitch: '0',
+      moistureLowValue: '0',
+      offSpead: '0',
+      onSelfSpead: '9',
+      onSpead: String(speed), // The actual speed we want to set
+      onlyUpdateSpeed: '0',
+      phHighSwitch: '0',
+      phHighValue: '0',
+      phLowSwitch: '0',
+      phLowValue: '0',
+      schedEndtTime: '65535',
+      schedStartTime: '65535',
+      settingMode: '0',
+      speak: '0',
+      surplus: '0',
+      tTrend: '0',
+      targetHumi: '0',
+      targetHumiSwitch: '0',
+      targetTSwitch: '0',
+      targetTemp: '0',
+      targetTempF: '32',
+      targetVpd: '0',
+      targetVpdSwitch: '0',
+      tdsUnit: '0',
+      temperature: '0',
+      temperatureF: '0',
+      trend: '0',
+      unit: '0',
+      vpdSettingMode: '0',
+      waterLevelLowSwitch: '0',
+      waterTempHighSwitch: '0',
+      waterTempHighValue: '0',
+      waterTempHighValueF: '32',
+      waterTempLowSwitch: '0',
+      waterTempLowValue: '0',
+      waterTempLowValueF: '32'
+      // NOTE: No modeSetid field - this matches official app behavior
+    });
+      
+    if (this.debug) {
+      this.log.debug(`[setDeviceModeSettings] Using official app payload format`);
     }
 
     try {
-      const params = new URLSearchParams();
-      for (const [key, value] of Object.entries(settings)) {
-        params.append(key, String(value));
-      }
-      
-      if (this.debug) {
-        this.log.debug(`[setDeviceModeSettings] Request params: ${params.toString()}`);
-      }
-
       const response = await this.axios.post(
         API_URL_ADD_DEV_MODE,
         params,
@@ -291,6 +333,10 @@ export class ACInfinityClient {
 
       if (response.data.code !== 200) {
         throw new ACInfinityClientRequestFailed(response.data);
+      }
+      
+      if (this.debug) {
+        this.log.debug(`[setDeviceModeSettings] Successfully set speed to ${speed} using official app format`);
       }
     } catch (error) {
       if (error instanceof ACInfinityClientError) {
