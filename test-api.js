@@ -156,7 +156,7 @@ class ACInfinityTest {
       moistureLowSwitch: '0',
       moistureLowValue: '0',
       offSpead: '0',
-      onSelfSpead: '9',
+      onSelfSpead: String(speed), // Try setting both fields
       onSpead: String(speed), // The actual speed we want to set
       onlyUpdateSpeed: '0',
       phHighSwitch: '0',

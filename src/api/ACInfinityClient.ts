@@ -11,6 +11,8 @@ import {
   API_URL_UPDATE_ADV_SETTING,
   PortControlKey,
   AdvancedSettingsKey,
+  ControllerType,
+  isNewFrameworkDevice,
 } from '../constants';
 
 export class ACInfinityClientError extends Error {
@@ -225,14 +227,35 @@ export class ACInfinityClient {
   async setDeviceModeSettings(
     deviceId: string | number,
     portId: number,
-    keyValues: Array<[string, number]>
+    keyValues: Array<[string, number]>,
+    deviceType?: number,
+    deviceData?: any
   ): Promise<void> {
     if (this.debug) {
       this.log.debug(`[setDeviceModeSettings] Called with deviceId: ${deviceId}, portId: ${portId}`);
       this.log.debug(`[setDeviceModeSettings] Key-value pairs: ${JSON.stringify(keyValues)}`);
+      this.log.debug(`[setDeviceModeSettings] Device type: ${deviceType}, New framework: ${isNewFrameworkDevice(deviceType || 0, deviceData)}`);
     }
     
-    // Extract the speed value from keyValues (assumes only speed changes for now)
+    // Choose API approach based on device type
+    if (deviceType && isNewFrameworkDevice(deviceType, deviceData)) {
+      if (this.debug) {
+        this.log.debug(`[setDeviceModeSettings] Using new framework (static payload) approach for device type ${deviceType}`);
+      }
+      return this.setDeviceModeSettingsNewFramework(deviceId, portId, keyValues);
+    } else {
+      if (this.debug) {
+        this.log.debug(`[setDeviceModeSettings] Using legacy (fetch-merge) approach for device type ${deviceType || 'unknown'}`);
+      }
+      return this.setDeviceModeSettingsLegacy(deviceId, portId, keyValues);
+    }
+  }
+
+  private async setDeviceModeSettingsNewFramework(
+    deviceId: string | number,
+    portId: number,
+    keyValues: Array<[string, number]>
+  ): Promise<void> {
     let speed = 0;
     for (const [key, value] of keyValues) {
       if (key === PortControlKey.ON_SPEED || key === 'onSpead') {
@@ -242,7 +265,7 @@ export class ACInfinityClient {
     }
 
     if (this.debug) {
-      this.log.debug(`[setDeviceModeSettings] Using official app format with speed: ${speed}`);
+      this.log.debug(`[setDeviceModeSettingsNewFramework] Using official app format with speed: ${speed}`);
     }
 
     // Use the exact payload format from official AC Infinity app (from Charles capture)
@@ -289,7 +312,7 @@ export class ACInfinityClient {
       moistureLowSwitch: '0',
       moistureLowValue: '0',
       offSpead: '0',
-      onSelfSpead: '9',
+      onSelfSpead: String(speed), // Set both fields to ensure it works
       onSpead: String(speed), // The actual speed we want to set
       onlyUpdateSpeed: '0',
       phHighSwitch: '0',
@@ -341,13 +364,98 @@ export class ACInfinityClient {
       }
       
       if (this.debug) {
-        this.log.debug(`[setDeviceModeSettings] Successfully set speed to ${speed} using official app format`);
+        this.log.debug(`[setDeviceModeSettingsNewFramework] Successfully set speed to ${speed} using official app format`);
       }
     } catch (error) {
       if (error instanceof ACInfinityClientError) {
         throw error;
       }
-      this.handleHttpError(error, 'setDeviceModeSettings');
+      this.handleHttpError(error, 'setDeviceModeSettingsNewFramework');
+    }
+  }
+
+  private async setDeviceModeSettingsLegacy(
+    deviceId: string | number,
+    portId: number,
+    keyValues: Array<[string, number]>
+  ): Promise<void> {
+    try {
+      // Step 1: Fetch current settings (Home Assistant approach)
+      if (this.debug) {
+        this.log.debug(`[setDeviceModeSettingsLegacy] Fetching current settings for device ${deviceId} port ${portId}`);
+      }
+      
+      const settings = await this.getDeviceModeSettingsList(deviceId, portId);
+      
+      if (this.debug) {
+        this.log.debug(`[setDeviceModeSettingsLegacy] Current settings:`, JSON.stringify(settings, null, 2));
+      }
+      
+      // Step 2: Clean the payload (remove incompatible fields like Home Assistant does)
+      const fieldsToRemove = [
+        PortControlKey.DEVICE_MAC_ADDR,
+        'ipcSetting',
+        'devSetting',
+      ];
+      
+      for (const field of fieldsToRemove) {
+        delete settings[field];
+      }
+      
+      // Step 3: Add default values for required fields
+      settings.vpdstatus = settings.vpdstatus || 0;
+      settings.vpdnums = settings.vpdnums || 0;
+      
+      // Step 4: Convert critical IDs to integers (like Home Assistant)
+      settings[PortControlKey.DEV_ID] = parseInt(String(settings[PortControlKey.DEV_ID]));
+      if (settings[PortControlKey.MODE_SET_ID]) {
+        settings[PortControlKey.MODE_SET_ID] = parseInt(String(settings[PortControlKey.MODE_SET_ID]));
+      }
+      
+      // Step 5: Apply user changes
+      for (const [key, value] of keyValues) {
+        settings[key] = value;
+        if (this.debug) {
+          this.log.debug(`[setDeviceModeSettingsLegacy] Setting ${key} = ${value}`);
+        }
+      }
+      
+      // Step 6: Convert None/null values to 0
+      for (const key in settings) {
+        if (settings[key] === null || settings[key] === undefined) {
+          settings[key] = 0;
+        }
+      }
+      
+      if (this.debug) {
+        this.log.debug(`[setDeviceModeSettingsLegacy] Final payload:`, JSON.stringify(settings, null, 2));
+      }
+      
+      // Step 7: Send the update
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(settings)) {
+        params.append(key, String(value));
+      }
+      
+      const response = await this.axios.post(
+        API_URL_ADD_DEV_MODE,
+        params,
+        { headers: this.getAuthHeaders(true) } // Include minversion for this endpoint
+      );
+
+      if (response.data.code !== 200) {
+        throw new ACInfinityClientRequestFailed(response.data);
+      }
+      
+      if (this.debug) {
+        this.log.debug(`[setDeviceModeSettingsLegacy] Successfully updated using fetch-merge approach`);
+      }
+      
+    } catch (error) {
+      if (error instanceof ACInfinityClientError) {
+        throw error;
+      }
+      this.handleHttpError(error, 'setDeviceModeSettingsLegacy');
     }
   }
 

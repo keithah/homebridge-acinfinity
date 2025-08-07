@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0-beta.1] - 2025-08-07
+
+### Added
+- **Universal Controller Support**: Hybrid API approach supporting both older and newer AC Infinity controllers
+  - **UIS 69 PRO** (type 11) - Uses Home Assistant-inspired fetch-merge approach
+  - **UIS 69 PRO+** (type 18) - Uses Home Assistant-inspired fetch-merge approach  
+  - **UIS 89 AI+** (type 20) - Uses static payload approach from official app
+- **Intelligent Controller Detection**: Automatically detects device framework and chooses appropriate API method
+- **Legacy Controller Compatibility**: Implements Home Assistant's proven approach for older controllers
+  - Fetches current settings before making changes
+  - Cleans payload by removing incompatible fields
+  - Converts data types properly (string IDs to integers)
+  - Adds required default values
+
+### Fixed
+- **999999 "Operation failed" errors** on UIS 69 PRO and similar older controllers
+- **Device-specific API handling** based on `newFrameworkDevice` flag and device type
+- **Proper field handling** for different controller generations
+
+### Technical Changes
+- Added `isNewFrameworkDevice()` detection function
+- Split `setDeviceModeSettings()` into framework-specific methods:
+  - `setDeviceModeSettingsNewFramework()` - Static payload for AI+ controllers
+  - `setDeviceModeSettingsLegacy()` - Fetch-merge approach for older controllers
+- Enhanced debug logging to show which API approach is being used
+- Added device type and data passing from accessories to API client
+
+### Background
+Analysis of the Home Assistant AC Infinity plugin revealed that older controllers (UIS 69 PRO) require a different API approach than newer controllers (UIS 89 AI+). Older controllers reject static payloads and need current settings fetched first, then merged with changes. This release implements a hybrid approach that automatically chooses the correct method based on controller type.
+
 ## [1.2.13] - 2025-08-07
 
 ### Fixed

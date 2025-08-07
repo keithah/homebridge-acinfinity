@@ -19,6 +19,21 @@ export enum ControllerType {
   UIS_89_AI_PLUS = 20,
 }
 
+export const isNewFrameworkDevice = (deviceType: number, deviceData: any): boolean => {
+  // AI+ controllers use the static payload approach
+  if (deviceType === ControllerType.UIS_89_AI_PLUS) {
+    return true;
+  }
+  
+  // Check the newFrameworkDevice flag if available
+  if (deviceData && typeof deviceData.newFrameworkDevice === 'boolean') {
+    return deviceData.newFrameworkDevice;
+  }
+  
+  // Default: older controllers use fetch-merge approach
+  return false;
+};
+
 export enum SensorType {
   PROBE_TEMPERATURE_F = 0,
   PROBE_TEMPERATURE_C = 1,

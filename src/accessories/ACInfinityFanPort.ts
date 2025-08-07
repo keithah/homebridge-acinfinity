@@ -9,6 +9,8 @@ export class ACInfinityFanPort {
   private readonly portNumber: number;
   private readonly informationService;
   private readonly fanService;
+  private lastSetSpeed: number | null = null;
+  private lastSetTime: number = 0;
 
   constructor(platform: ACInfinityPlatform, accessory: PlatformAccessory) {
     this.platform = platform;
@@ -66,8 +68,19 @@ export class ACInfinityFanPort {
     
     try {
       this.platform.log.info(`[FanPort] Making API call to set active=${active} (speed=${speed}) for port ${this.portNumber}...`);
-      await this.platform.client.setDeviceModeSettings(this.deviceId, this.portNumber, [[PortControlKey.ON_SPEED, speed]]);
+      const device = this.accessory.context.device;
+      await this.platform.client.setDeviceModeSettings(
+        this.deviceId, 
+        this.portNumber, 
+        [[PortControlKey.ON_SPEED, speed]], 
+        device?.devType, 
+        device
+      );
       this.platform.log.info(`[FanPort] SUCCESS: Active state set to ${active} for port ${this.portNumber}`);
+      
+      // Cache the speed we just set to avoid reverting due to stale API data
+      this.lastSetSpeed = speed;
+      this.lastSetTime = Date.now();
     } catch (error) {
       this.platform.log.error(`[FanPort] ERROR setting active state for port ${this.portNumber}:`, error);
       if (error instanceof Error) {
@@ -118,22 +131,32 @@ export class ACInfinityFanPort {
   }
 
   async getSpeed(): Promise<CharacteristicValue> {
+    // If we recently set a speed, return that cached value to avoid stale data issues
+    const CACHE_DURATION = 5000; // 5 seconds
+    const now = Date.now();
+    if (this.lastSetSpeed !== null && (now - this.lastSetTime) < CACHE_DURATION) {
+      const cachedValue = this.lastSetSpeed * 10;
+      this.platform.log.info(`[FanPort] GETSPEED: port ${this.portNumber} returning cached value ${cachedValue}% (set ${Math.round((now - this.lastSetTime) / 1000)}s ago)`);
+      return cachedValue;
+    }
+    
     const port = this.accessory.context.port;
     if (!port) {
-      if (this.platform.config.debug) {
-        this.platform.log.debug(`[FanPort] No port data available for port ${this.portNumber}`);
-      }
+      this.platform.log.info(`[FanPort] GETSPEED: No port data available for port ${this.portNumber} - returning 0`);
       return 0;
     }
     
     // Use the 'speak' field which represents the actual current power level (0-10)
     const currentPower = port[PortPropertyKey.SPEAK] || 0;
+    const homekitValue = currentPower * 10;
+    
+    this.platform.log.info(`[FanPort] GETSPEED: port ${this.portNumber} speak=${currentPower} -> HomeKit=${homekitValue}%`);
     
     if (this.platform.config.debug) {
-      this.platform.log.debug(`[FanPort] Getting speed for port ${this.portNumber}: currentPower=${currentPower}, HomeKit value=${currentPower * 10}`);
+      this.platform.log.debug(`[FanPort] Port data: ${JSON.stringify(port, null, 2)}`);
     }
     
-    return currentPower * 10; // Convert 0-10 to 0-100
+    return homekitValue; // Convert 0-10 to 0-100
   }
 
   async setSpeed(value: CharacteristicValue): Promise<void> {
@@ -151,12 +174,24 @@ export class ACInfinityFanPort {
           this.platform.log.debug(`[FanPort] Executing speed change for port ${this.portNumber} on device ${this.deviceId} to ${speed}`);
         }
         this.platform.log.info(`[FanPort] Making API call to set speed ${speed} for port ${this.portNumber}...`);
-        return this.platform.client.setDeviceModeSettings(this.deviceId, this.portNumber, [[PortControlKey.ON_SPEED, speed]]);
+        const device = this.accessory.context.device;
+        return this.platform.client.setDeviceModeSettings(
+          this.deviceId, 
+          this.portNumber, 
+          [[PortControlKey.ON_SPEED, speed]], 
+          device?.devType, 
+          device
+        );
       });
       
       this.platform.log.info(`[FanPort] SUCCESS: Speed set to ${speed} for port ${this.portNumber}`);
+      
+      // Cache the speed we just set to avoid reverting due to stale API data
+      this.lastSetSpeed = speed;
+      this.lastSetTime = Date.now();
+      
       if (this.platform.config.debug) {
-        this.platform.log.debug(`[FanPort] Successfully set speed for port ${this.portNumber}`);
+        this.platform.log.debug(`[FanPort] Cached speed ${speed} for port ${this.portNumber}`);
       }
     } catch (error) {
       this.platform.log.error(`[FanPort] ERROR setting speed for port ${this.portNumber}:`, error);
