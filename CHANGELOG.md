@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.6] - 2025-08-07
+
+### Fixed
+- **Enhanced Rate Limiting Protection**: Improved API retry logic and request throttling
+  - Increased retry attempts from 3 to 5 total attempts
+  - Implemented exponential backoff delays (2s, 4s, 6s, 8s) instead of fixed 1s delay
+  - Added global request throttling with minimum 1.5 second intervals between API calls
+  - More aggressive approach to handle persistent "Data saving failed" errors
+  - Better debug logging for throttling and retry attempts
+
+### Technical Changes
+- Enhanced `setDeviceModeSettings()` with more robust retry mechanism
+- Added `throttleRequest()` method to prevent rapid successive API calls
+- Improved error handling with exponential backoff strategy
+- Added request timing tracking to prevent API overload
+
 ## [1.2.5] - 2025-08-07
 
 ### Fixed

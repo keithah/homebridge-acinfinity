@@ -43,6 +43,7 @@ export class ACInfinityClient {
   private userId: string | null = null;
   private readonly axios: AxiosInstance;
   private readonly debug: boolean;
+  private lastRequestTime: number = 0;
 
   constructor(host: string, email: string, password: string, private readonly log: Logger, debug = false) {
     this.host = host;
@@ -251,6 +252,9 @@ export class ACInfinityClient {
       this.log.debug(`[setDeviceModeSettings] Final settings to be sent: ${JSON.stringify(settings)}`);
     }
 
+    // Add throttling before making the request
+    await this.throttleRequest();
+
     // Retry logic to handle rate limiting - matches Home Assistant implementation
     let tryCount = 0;
     while (true) {
@@ -282,10 +286,12 @@ export class ACInfinityClient {
           const isRateLimitError = error instanceof ACInfinityClientRequestFailed && 
             (error.response?.code === 403 || error.response?.msg?.includes('Data saving failed'));
           
-          if (isRateLimitError && tryCount < 2) {
+          if (isRateLimitError && tryCount < 4) { // Increased to 5 total attempts
             tryCount++;
-            this.log.warn(`API rate limit hit, retrying attempt ${tryCount}/3 after 1 second delay`);
-            await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+            // Exponential backoff: 2s, 4s, 6s, 8s
+            const delayMs = Math.min(2000 + (tryCount * 2000), 10000);
+            this.log.warn(`API rate limit hit, retrying attempt ${tryCount}/5 after ${delayMs/1000} second delay`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
             continue; // Retry the request
           }
           
@@ -423,5 +429,21 @@ export class ACInfinityClient {
       this.log.error('Update advanced settings error:', error);
       throw new ACInfinityClientCannotConnect();
     }
+  }
+
+  private async throttleRequest(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    const minInterval = 1500; // Minimum 1.5 seconds between API calls
+    
+    if (timeSinceLastRequest < minInterval) {
+      const delayMs = minInterval - timeSinceLastRequest;
+      if (this.debug) {
+        this.log.debug(`[API Throttle] Waiting ${delayMs}ms before next request`);
+      }
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+    
+    this.lastRequestTime = Date.now();
   }
 }
