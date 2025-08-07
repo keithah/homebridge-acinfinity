@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.2.9] - 2025-08-07
+## [1.2.10] - 2025-08-07
 
 ### Fixed
 - **Complete API Rewrite**: Implemented exact official AC Infinity app API format
