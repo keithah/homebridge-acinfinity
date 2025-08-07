@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.12] - 2025-08-07
+
+### Added
+- **Enhanced Debug Logging**: Comprehensive debugging information when debug mode is enabled
+  - Plugin version displayed in startup logs
+  - Detailed device information (temperature, humidity, VPD, ports, sensors)
+  - Complete port status and sensor data
+  - Full JSON device data for troubleshooting
+  - Update cycle tracking and API call flow visibility
+
+### Fixed
+- **Comprehensive Error Reporting**: All errors now include full details for troubleshooting
+  - SetSpeed and SetActive calls now always log when called (not just in debug mode)
+  - Detailed error messages with error names, messages, and stack traces
+  - Clear success/failure indicators for all API operations
+  - Enhanced discovery and update error handling
+
+### Technical Changes
+- Added explicit logging for all fan control operations regardless of debug setting
+- Enhanced platform startup logging with version information
+- Improved error handling across all methods with detailed error reporting
+- Added comprehensive device and port information display in debug mode
+
+### For Users
+This release provides maximum visibility into plugin operation for troubleshooting fan control issues. You'll now see exactly when HomeKit calls are made and whether they succeed or fail, making it easy to identify the root cause of any problems.
+
 ## [1.2.11] - 2025-08-07
 
 ### Fixed

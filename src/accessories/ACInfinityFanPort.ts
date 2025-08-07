@@ -60,12 +60,22 @@ export class ACInfinityFanPort {
   }
 
   async setActive(value: CharacteristicValue): Promise<void> {
+    const active = value === this.platform.Characteristic.Active.ACTIVE;
+    const speed = active ? 10 : 0; // Default to speed 10 when turning on
+    this.platform.log.info(`[FanPort] SETACTIVE CALLED: port ${this.portNumber} device ${this.deviceId} active=${active} speed=${speed}`);
+    
     try {
-      const active = value === this.platform.Characteristic.Active.ACTIVE;
-      const speed = active ? 10 : 0; // Default to speed 10 when turning on
+      this.platform.log.info(`[FanPort] Making API call to set active=${active} (speed=${speed}) for port ${this.portNumber}...`);
       await this.platform.client.setDeviceModeSettings(this.deviceId, this.portNumber, [[PortControlKey.ON_SPEED, speed]]);
+      this.platform.log.info(`[FanPort] SUCCESS: Active state set to ${active} for port ${this.portNumber}`);
     } catch (error) {
-      this.platform.log.error('Failed to set port active state:', error);
+      this.platform.log.error(`[FanPort] ERROR setting active state for port ${this.portNumber}:`, error);
+      if (error instanceof Error) {
+        this.platform.log.error(`[FanPort] Error details - Name: ${error.name}, Message: ${error.message}`);
+        if (error.stack) {
+          this.platform.log.error(`[FanPort] Stack trace:`, error.stack);
+        }
+      }
       throw new this.platform.api.hap.HapStatusError(-70402);
     }
   }
@@ -127,6 +137,8 @@ export class ACInfinityFanPort {
   }
 
   async setSpeed(value: CharacteristicValue): Promise<void> {
+    this.platform.log.info(`[FanPort] SETSPEED CALLED: port ${this.portNumber} device ${this.deviceId} to ${Math.round(Number(value) / 10)} (HomeKit: ${value})`);
+    
     try {
       const speed = Math.round(Number(value) / 10); // Convert 0-100 to 0-10
       if (this.platform.config.debug) {
@@ -138,14 +150,22 @@ export class ACInfinityFanPort {
         if (this.platform.config.debug) {
           this.platform.log.debug(`[FanPort] Executing speed change for port ${this.portNumber} on device ${this.deviceId} to ${speed}`);
         }
+        this.platform.log.info(`[FanPort] Making API call to set speed ${speed} for port ${this.portNumber}...`);
         return this.platform.client.setDeviceModeSettings(this.deviceId, this.portNumber, [[PortControlKey.ON_SPEED, speed]]);
       });
       
+      this.platform.log.info(`[FanPort] SUCCESS: Speed set to ${speed} for port ${this.portNumber}`);
       if (this.platform.config.debug) {
         this.platform.log.debug(`[FanPort] Successfully set speed for port ${this.portNumber}`);
       }
     } catch (error) {
-      this.platform.log.error('Failed to set port speed:', error);
+      this.platform.log.error(`[FanPort] ERROR setting speed for port ${this.portNumber}:`, error);
+      if (error instanceof Error) {
+        this.platform.log.error(`[FanPort] Error details - Name: ${error.name}, Message: ${error.message}`);
+        if (error.stack) {
+          this.platform.log.error(`[FanPort] Stack trace:`, error.stack);
+        }
+      }
       throw new this.platform.api.hap.HapStatusError(-70402);
     }
   }

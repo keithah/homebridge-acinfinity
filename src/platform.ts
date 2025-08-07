@@ -14,6 +14,7 @@ import { ACInfinityClient } from './api/ACInfinityClient';
 import { ACInfinityController } from './accessories/ACInfinityController';
 import { ACInfinityFanPort } from './accessories/ACInfinityFanPort';
 import { ACInfinitySensor } from './accessories/ACInfinitySensor';
+import * as packageJson from '../package.json';
 
 export interface ACInfinityPlatformConfig extends PlatformConfig {
   email: string;
@@ -54,6 +55,10 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
     // Set polling interval (default 10 seconds, min 5, max 600)
     this.pollingInterval = Math.max(5, Math.min(600, config.pollingInterval || 10)) * 1000;
 
+    this.log.info(`[AC Infinity] Initializing ACInfinity platform v${packageJson.version}...`);
+    if (config.debug) {
+      this.log.info('[AC Infinity] Debug mode enabled - detailed logging active');
+    }
     this.log.debug('Finished initializing platform:', config.name);
 
     this.api.on(APIEvent.DID_FINISH_LAUNCHING, () => {
@@ -87,8 +92,50 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
       this.log.debug('Fetching device list from AC Infinity API...');
       const devices = await this.client.getDevicesListAll();
       this.log.info(`Found ${devices.length} device(s) from AC Infinity API`);
+      
       if (this.config.debug) {
-        this.log.debug('Device data:', JSON.stringify(devices, null, 2));
+        this.log.info('=== DETAILED DEVICE DEBUG INFO ===');
+        devices.forEach((device, index) => {
+          this.log.info(`Device ${index + 1}:`);
+          this.log.info(`  Name: ${device.devName}`);
+          this.log.info(`  ID: ${device.devId}`);
+          this.log.info(`  Type: ${device.devType}`);
+          this.log.info(`  MAC: ${device.devMacAddr}`);
+          this.log.info(`  Online: ${device.online}`);
+          this.log.info(`  Hardware Version: ${device.hardwareVersion}`);
+          this.log.info(`  Firmware Version: ${device.firmwareVersion}`);
+          
+          const deviceInfo = device[ControllerPropertyKey.DEVICE_INFO];
+          if (deviceInfo) {
+            this.log.info(`  Temperature: ${deviceInfo.temperature / 100}°C`);
+            this.log.info(`  Humidity: ${deviceInfo.humidity / 100}%`);
+            this.log.info(`  VPD: ${deviceInfo.vpdnums / 100}`);
+            
+            if (deviceInfo.ports && Array.isArray(deviceInfo.ports)) {
+              this.log.info(`  Ports (${deviceInfo.ports.length}):`);
+              deviceInfo.ports.forEach((port: any) => {
+                this.log.info(`    Port ${port.port}: ${port.portName || 'Unnamed'}`);
+                this.log.info(`      Online: ${port.online}`);
+                this.log.info(`      LoadState: ${port.loadState}`);
+                this.log.info(`      Speak (Power): ${port.speak}/10`);
+                this.log.info(`      Current Mode: ${port.curMode}`);
+                this.log.info(`      Remaining Time: ${port.remainTime}min`);
+              });
+            }
+            
+            if (deviceInfo.sensors && Array.isArray(deviceInfo.sensors)) {
+              this.log.info(`  Sensors (${deviceInfo.sensors.length}):`);
+              deviceInfo.sensors.forEach((sensor: any) => {
+                this.log.info(`    Sensor Port ${sensor.accessPort}: Type ${sensor.sensorType}`);
+                this.log.info(`      Data: ${sensor.sensorData}`);
+                this.log.info(`      Unit: ${sensor.sensorUnit}`);
+                this.log.info(`      Precision: ${sensor.sensorPrecision}`);
+              });
+            }
+          }
+          this.log.info('  Full Device Data:', JSON.stringify(device, null, 2));
+        });
+        this.log.info('=== END DEVICE DEBUG INFO ===');
       }
       
       // Process each device and create individual accessories for each port
@@ -100,11 +147,18 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
           for (const port of deviceInfo[ControllerPropertyKey.PORTS]) {
             // Skip inactive/offline ports
             if (!port.online || port.loadState === 0) {
+              if (this.config.debug) {
+                this.log.debug(`Skipping inactive port ${port[PortPropertyKey.PORT]} (online: ${port.online}, loadState: ${port.loadState})`);
+              }
               continue;
             }
             const portNumber = port[PortPropertyKey.PORT];
             const portName = port[PortPropertyKey.NAME] || `${device.devName} Port ${portNumber}`;
             const portUuid = this.api.hap.uuid.generate(`${device.devId}-port-${portNumber}`);
+            
+            if (this.config.debug) {
+              this.log.info(`Processing active port ${portNumber}: ${portName} (UUID: ${portUuid})`);
+            }
             
             this.discoveredDevices.add(portUuid);
 
@@ -212,8 +266,15 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
       }
     } catch (error) {
       this.log.error('Failed to discover devices:', error);
+      if (error instanceof Error) {
+        this.log.error(`Error details - Name: ${error.name}, Message: ${error.message}`);
+        if (error.stack) {
+          this.log.error(`Stack trace:`, error.stack);
+        }
+      }
       // Retry after a delay
       setTimeout(() => {
+        this.log.info('Retrying device discovery...');
         this.discoverDevices();
       }, 30000); // Retry after 30 seconds
     }
@@ -221,11 +282,22 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
 
   async updateDevices() {
     try {
+      if (this.config.debug) {
+        this.log.debug('[Platform] Starting device update cycle...');
+      }
+      
       if (!this.client.isLoggedIn()) {
+        if (this.config.debug) {
+          this.log.debug('[Platform] Client not logged in, logging in...');
+        }
         await this.queueRequest(() => this.client.login());
       }
 
       const devices = await this.queueRequest(() => this.client.getDevicesListAll());
+      
+      if (this.config.debug) {
+        this.log.debug(`[Platform] Retrieved ${devices.length} devices for update`);
+      }
       
       for (const device of devices) {
         const deviceInfo = device[ControllerPropertyKey.DEVICE_INFO];
@@ -238,6 +310,9 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
             const accessory = this.accessories.find(a => a.UUID === portUuid);
             
             if (accessory) {
+              if (this.config.debug) {
+                this.log.debug(`[Platform] Updating port ${portNumber} (${port[PortPropertyKey.NAME]}): speak=${port[PortPropertyKey.SPEAK]}, mode=${port[PortPropertyKey.CURRENT_MODE]}, state=${port[PortPropertyKey.STATE]}`);
+              }
               accessory.context.device = device;
               accessory.context.port = port;
               const fanPort = this.portInstances.get(portUuid);
@@ -275,6 +350,12 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
       }
     } catch (error) {
       this.log.error('Failed to update devices:', error);
+      if (error instanceof Error) {
+        this.log.error(`Error details - Name: ${error.name}, Message: ${error.message}`);
+        if (error.stack) {
+          this.log.error(`Stack trace:`, error.stack);
+        }
+      }
     }
   }
 
