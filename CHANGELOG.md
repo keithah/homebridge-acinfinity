@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.3] - 2025-08-07
+
+### Added
+- Debug mode configuration option for troubleshooting API issues
+  - Enable with `"debug": true` in config or checkbox in Homebridge UI
+  - Logs all API requests/responses with headers and payloads
+  - Helps diagnose 403 "Data saving failed" errors
+- Debug logging for fan speed reading and port updates
+
+### Fixed
+- Fan speed now shows actual current speed in Auto mode instead of max configured speed
+  - Uses real-time `loadState` value instead of fetching settings from API
+  - Rotation speed updates automatically when port state changes
+  - Resolves issue where Auto mode displayed max speed instead of actual running speed
+- Reduced verbose logging in normal operation
+  - Device JSON data now only shown in debug mode
+  - Cache restoration messages moved to debug level
+  - Removed duplicate login messages
+
+### Changed
+- Simplified release workflow to trigger on GitHub releases instead of tags
+
 ## [1.2.2] - 2025-08-07
 
 ### Added
