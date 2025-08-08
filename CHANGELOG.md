@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0-beta.3] - 2025-08-08
+
+### Fixed
+- **User-Agent Compatibility**: Legacy controllers now use Home Assistant's exact User-Agent string
+  - Changed from `ACController/1.9.7` to `ACController/1.8.2` for legacy devices
+  - Uses Home Assistant's exact header combination: User-Agent + Content-Type + token only
+  - Should finally resolve 403 "Data saving failed" errors on UIS 69 PRO controllers
+
+### Technical Changes
+- Legacy controllers now create separate axios instances with Home Assistant's exact configuration
+- Both `getDeviceModeSettingsListLegacy()` and `setDeviceModeSettingsLegacy()` use HA's User-Agent
+- Maintains modern approach for newer controllers while perfectly mimicking HA for legacy devices
+
 ## [1.3.0-beta.2] - 2025-08-08
 
 ### Fixed

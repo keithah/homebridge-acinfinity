@@ -240,13 +240,27 @@ export class ACInfinityClient {
     }
 
     try {
-      const response = await this.axios.post(
+      // Create axios instance with Home Assistant's exact User-Agent
+      const legacyAxios = axios.create({
+        baseURL: this.host,
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'ACController/1.8.2 (com.acinfinity.humiture; build:489; iOS 16.5.1) Alamofire/5.4.4',
+          'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
+        },
+        httpAgent: this.httpAgent,
+        httpsAgent: this.httpsAgent,
+        maxRedirects: 3,
+        validateStatus: (status) => status < 500,
+      });
+
+      const response = await legacyAxios.post(
         API_URL_GET_DEV_MODE_SETTING,
         new URLSearchParams({
           devId: String(deviceId),
           port: String(portId),
         }),
-        { headers: this.getLegacyHeaders() } // Use simple headers like Home Assistant
+        { headers: { token: this.userId! } } // Only token header like Home Assistant
       );
 
       if (response.data.code !== 200) {
@@ -469,16 +483,29 @@ export class ACInfinityClient {
         this.log.debug(`[setDeviceModeSettingsLegacy] Final payload:`, JSON.stringify(settings, null, 2));
       }
       
-      // Step 7: Send the update with Home Assistant-style headers (no extra headers!)
+      // Step 7: Create a separate axios instance with Home Assistant's exact User-Agent
+      const legacyAxios = axios.create({
+        baseURL: this.host,
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'ACController/1.8.2 (com.acinfinity.humiture; build:489; iOS 16.5.1) Alamofire/5.4.4',
+          'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
+        },
+        httpAgent: this.httpAgent,
+        httpsAgent: this.httpsAgent,
+        maxRedirects: 3,
+        validateStatus: (status) => status < 500,
+      });
+      
       const params = new URLSearchParams();
       for (const [key, value] of Object.entries(settings)) {
         params.append(key, String(value));
       }
       
-      const response = await this.axios.post(
+      const response = await legacyAxios.post(
         API_URL_ADD_DEV_MODE,
         params,
-        { headers: this.getLegacyHeaders() } // Use simple headers like Home Assistant
+        { headers: { token: this.userId! } } // Only token header like Home Assistant
       );
 
       if (response.data.code !== 200) {
@@ -486,7 +513,7 @@ export class ACInfinityClient {
       }
       
       if (this.debug) {
-        this.log.debug(`[setDeviceModeSettingsLegacy] Successfully updated using fetch-merge approach`);
+        this.log.debug(`[setDeviceModeSettingsLegacy] Successfully updated using Home Assistant exact approach`);
       }
       
     } catch (error) {
