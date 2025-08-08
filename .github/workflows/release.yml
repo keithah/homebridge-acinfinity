@@ -27,7 +27,16 @@ jobs:
     - name: Build TypeScript
       run: npm run build
     
+    - name: Determine npm tag
+      id: npm-tag
+      run: |
+        if [[ "${{ github.ref }}" == *"-beta."* ]] || [[ "${{ github.ref }}" == *"-alpha."* ]] || [[ "${{ github.ref }}" == *"-rc."* ]]; then
+          echo "tag=beta" >> $GITHUB_OUTPUT
+        else
+          echo "tag=latest" >> $GITHUB_OUTPUT
+        fi
+    
     - name: Publish to npm
-      run: npm publish
+      run: npm publish --tag ${{ steps.npm-tag.outputs.tag }}
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -171,6 +171,16 @@ export class ACInfinityClient {
     return headers;
   }
 
+  private getLegacyHeaders(): Record<string, string> {
+    if (!this.userId) {
+      throw new ACInfinityClientError('Client is not logged in');
+    }
+    // Use simple headers like Home Assistant - no phoneType, appVersion, or minversion
+    return {
+      token: this.userId,
+    };
+  }
+
   async getDevicesListAll(): Promise<any[]> {
     if (!this.isLoggedIn()) {
       throw new ACInfinityClientError('AC Infinity client is not logged in');
@@ -221,6 +231,34 @@ export class ACInfinityClient {
         throw error;
       }
       this.handleHttpError(error, 'getDeviceModeSettingsList');
+    }
+  }
+
+  async getDeviceModeSettingsListLegacy(deviceId: string | number, portId: number): Promise<any> {
+    if (!this.isLoggedIn()) {
+      throw new ACInfinityClientError('AC Infinity client is not logged in');
+    }
+
+    try {
+      const response = await this.axios.post(
+        API_URL_GET_DEV_MODE_SETTING,
+        new URLSearchParams({
+          devId: String(deviceId),
+          port: String(portId),
+        }),
+        { headers: this.getLegacyHeaders() } // Use simple headers like Home Assistant
+      );
+
+      if (response.data.code !== 200) {
+        throw new ACInfinityClientRequestFailed(response.data);
+      }
+
+      return response.data.data;
+    } catch (error) {
+      if (error instanceof ACInfinityClientError) {
+        throw error;
+      }
+      this.handleHttpError(error, 'getDeviceModeSettingsListLegacy');
     }
   }
 
@@ -385,7 +423,7 @@ export class ACInfinityClient {
         this.log.debug(`[setDeviceModeSettingsLegacy] Fetching current settings for device ${deviceId} port ${portId}`);
       }
       
-      const settings = await this.getDeviceModeSettingsList(deviceId, portId);
+      const settings = await this.getDeviceModeSettingsListLegacy(deviceId, portId);
       
       if (this.debug) {
         this.log.debug(`[setDeviceModeSettingsLegacy] Current settings:`, JSON.stringify(settings, null, 2));
@@ -431,7 +469,7 @@ export class ACInfinityClient {
         this.log.debug(`[setDeviceModeSettingsLegacy] Final payload:`, JSON.stringify(settings, null, 2));
       }
       
-      // Step 7: Send the update
+      // Step 7: Send the update with Home Assistant-style headers (no extra headers!)
       const params = new URLSearchParams();
       for (const [key, value] of Object.entries(settings)) {
         params.append(key, String(value));
@@ -440,7 +478,7 @@ export class ACInfinityClient {
       const response = await this.axios.post(
         API_URL_ADD_DEV_MODE,
         params,
-        { headers: this.getAuthHeaders(true) } // Include minversion for this endpoint
+        { headers: this.getLegacyHeaders() } // Use simple headers like Home Assistant
       );
 
       if (response.data.code !== 200) {

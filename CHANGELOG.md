@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0-beta.2] - 2025-08-08
+
+### Fixed
+- **Legacy Controller API Compatibility**: Updated legacy controllers to use simplified headers like Home Assistant
+  - Removed `phoneType`, `appVersion`, and `minversion` headers for UIS 69 PRO controllers
+  - Uses only `token` header for legacy device API calls, matching Home Assistant's working approach
+  - Should resolve persistent 403 "Data saving failed" errors on older controllers
+
+### Technical Changes
+- Added `getLegacyHeaders()` method that uses minimal headers for older controllers
+- Added `getDeviceModeSettingsListLegacy()` method for simplified API calls
+- Legacy controllers now use Home Assistant's exact header approach instead of official app headers
+
 ## [1.3.0-beta.1] - 2025-08-07
 
 ### Added
