@@ -432,80 +432,121 @@ export class ACInfinityClient {
     keyValues: Array<[string, number]>
   ): Promise<void> {
     try {
-      // Step 1: Fetch current settings (Home Assistant approach)
-      if (this.debug) {
-        this.log.debug(`[setDeviceModeSettingsLegacy] Fetching current settings for device ${deviceId} port ${portId}`);
+      // Extract speed from keyValues for iPhone app approach
+      let speed = 0;
+      for (const [key, value] of keyValues) {
+        if (key === PortControlKey.ON_SPEED || key === 'onSpead') {
+          speed = value;
+          break;
+        }
       }
-      
+
+      if (this.debug) {
+        this.log.debug(`[setDeviceModeSettingsLegacy] Using iPhone app approach (static payload with real settings) for speed: ${speed}`);
+      }
+
+      // Step 1: Fetch current settings to populate static payload with real values (iPhone app approach)
       const settings = await this.getDeviceModeSettingsListLegacy(deviceId, portId);
       
       if (this.debug) {
-        this.log.debug(`[setDeviceModeSettingsLegacy] Current settings:`, JSON.stringify(settings, null, 2));
+        this.log.debug(`[setDeviceModeSettingsLegacy] Retrieved current settings for static payload population`);
       }
-      
-      // Step 2: Clean the payload (remove incompatible fields like Home Assistant does)
-      const fieldsToRemove = [
-        PortControlKey.DEVICE_MAC_ADDR,
-        'ipcSetting',
-        'devSetting',
-      ];
-      
-      for (const field of fieldsToRemove) {
-        delete settings[field];
-      }
-      
-      // Step 3: Add default values for required fields
-      settings.vpdstatus = settings.vpdstatus || 0;
-      settings.vpdnums = settings.vpdnums || 0;
-      
-      // Step 4: Convert critical IDs to integers (like Home Assistant)
-      settings[PortControlKey.DEV_ID] = parseInt(String(settings[PortControlKey.DEV_ID]));
-      if (settings[PortControlKey.MODE_SET_ID]) {
-        settings[PortControlKey.MODE_SET_ID] = parseInt(String(settings[PortControlKey.MODE_SET_ID]));
-      }
-      
-      // Step 5: Apply user changes
-      for (const [key, value] of keyValues) {
-        settings[key] = value;
-        if (this.debug) {
-          this.log.debug(`[setDeviceModeSettingsLegacy] Setting ${key} = ${value}`);
-        }
-      }
-      
-      // Step 6: Convert None/null values to 0
-      for (const key in settings) {
-        if (settings[key] === null || settings[key] === undefined) {
-          settings[key] = 0;
-        }
-      }
-      
-      if (this.debug) {
-        this.log.debug(`[setDeviceModeSettingsLegacy] Final payload:`, JSON.stringify(settings, null, 2));
-      }
-      
-      // Step 7: Create a separate axios instance with Home Assistant's exact User-Agent
-      const legacyAxios = axios.create({
-        baseURL: this.host,
-        timeout: 15000,
-        headers: {
-          'User-Agent': 'ACController/1.8.2 (com.acinfinity.humiture; build:489; iOS 16.5.1) Alamofire/5.4.4',
-          'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
-        },
-        httpAgent: this.httpAgent,
-        httpsAgent: this.httpsAgent,
-        maxRedirects: 3,
-        validateStatus: (status) => status < 500,
+
+      // Step 2: Create static payload with real device settings (iPhone app format)
+      const params = new URLSearchParams({
+        acitveTimerOff: String(settings.acitveTimerOff || 0),
+        acitveTimerOn: String(settings.acitveTimerOn || 0),
+        activeCycleOff: String(settings.activeCycleOff || 0),
+        activeCycleOn: String(settings.activeCycleOn || 0),
+        activeHh: String(settings.activeHh || 0),
+        activeHt: String(settings.activeHt || 0),
+        activeHtVpd: String(settings.activeHtVpd || 0),
+        activeHtVpdNums: String(settings.activeHtVpdNums || 0),
+        activeLh: String(settings.activeLh || 0),
+        activeLt: String(settings.activeLt || 0),
+        activeLtVpd: String(settings.activeLtVpd || 0),
+        activeLtVpdNums: String(settings.activeLtVpdNums || 0),
+        atType: String(settings.atType || 2),
+        co2FanHighSwitch: String(settings.co2FanHighSwitch || 0),
+        co2FanHighValue: String(settings.co2FanHighValue || 0),
+        co2LowSwitch: String(settings.co2LowSwitch || 0),
+        co2LowValue: String(settings.co2LowValue || 0),
+        devHh: String(settings.devHh || 0),
+        devHt: String(settings.devHt || 0),
+        devHtf: String(settings.devHtf || 32),
+        devId: String(deviceId),
+        devLh: String(settings.devLh || 0),
+        devLt: String(settings.devLt || 0),
+        devLtf: String(settings.devLtf || 32),
+        devMacAddr: '',
+        ecOrTds: String(settings.ecOrTds || 0),
+        ecTdsLowSwitchEc: String(settings.ecTdsLowSwitchEc || 0),
+        ecTdsLowSwitchTds: String(settings.ecTdsLowSwitchTds || 0),
+        ecTdsLowValueEcMs: String(settings.ecTdsLowValueEcMs || 1),
+        ecTdsLowValueEcUs: String(settings.ecTdsLowValueEcUs || 0),
+        ecTdsLowValueTdsPpm: String(settings.ecTdsLowValueTdsPpm || 0),
+        ecTdsLowValueTdsPpt: String(settings.ecTdsLowValueTdsPpt || 1),
+        ecUnit: String(settings.ecUnit || 0),
+        externalPort: String(portId),
+        hTrend: String(settings.hTrend || 0),
+        humidity: String(settings.humidity || 0),
+        isOpenAutomation: String(settings.isOpenAutomation || 0),
+        masterPort: String(settings.masterPort || 0),
+        modeType: String(settings.modeType || 0),
+        moistureLowSwitch: String(settings.moistureLowSwitch || 0),
+        moistureLowValue: String(settings.moistureLowValue || 0),
+        offSpead: String(settings.offSpead || 0),
+        onSelfSpead: String(settings.onSelfSpead || 0), // Keep original value
+        onSpead: String(speed), // Only change the actual speed
+        onlyUpdateSpeed: String(settings.onlyUpdateSpeed || 0),
+        phHighSwitch: String(settings.phHighSwitch || 0),
+        phHighValue: String(settings.phHighValue || 0),
+        phLowSwitch: String(settings.phLowSwitch || 0),
+        phLowValue: String(settings.phLowValue || 0),
+        schedEndtTime: String(settings.schedEndtTime || 65535),
+        schedStartTime: String(settings.schedStartTime || 65535),
+        settingMode: String(settings.settingMode || 0),
+        speak: String(settings.speak || 0),
+        surplus: String(settings.surplus || 0),
+        tTrend: String(settings.tTrend || 0),
+        targetHumi: String(settings.targetHumi || 0),
+        targetHumiSwitch: String(settings.targetHumiSwitch || 0),
+        targetTSwitch: String(settings.targetTSwitch || 0),
+        targetTemp: String(settings.targetTemp || 0),
+        targetTempF: String(settings.targetTempF || 32),
+        targetVpd: String(settings.targetVpd || 0),
+        targetVpdSwitch: String(settings.targetVpdSwitch || 0),
+        tdsUnit: String(settings.tdsUnit || 0),
+        temperature: String(settings.temperature || 0),
+        temperatureF: String(settings.temperatureF || 0),
+        trend: String(settings.trend || 0),
+        unit: String(settings.unit || 0),
+        vpdSettingMode: String(settings.vpdSettingMode || 0),
+        waterLevelLowSwitch: String(settings.waterLevelLowSwitch || 0),
+        waterTempHighSwitch: String(settings.waterTempHighSwitch || 0),
+        waterTempHighValue: String(settings.waterTempHighValue || 0),
+        waterTempHighValueF: String(settings.waterTempHighValueF || 32),
+        waterTempLowSwitch: String(settings.waterTempLowSwitch || 0),
+        waterTempLowValue: String(settings.waterTempLowValue || 0),
+        waterTempLowValueF: String(settings.waterTempLowValueF || 32)
+        // NOTE: NO modeSetid field - this matches iPhone app behavior
       });
-      
-      const params = new URLSearchParams();
-      for (const [key, value] of Object.entries(settings)) {
-        params.append(key, String(value));
+
+      if (this.debug) {
+        this.log.debug(`[setDeviceModeSettingsLegacy] Sending static payload with real device settings`);
       }
-      
-      const response = await legacyAxios.post(
+
+      // Step 3: Send using iPhone app User-Agent and headers
+      const response = await this.axios.post(
         API_URL_ADD_DEV_MODE,
         params,
-        { headers: { token: this.userId! } } // Only token header like Home Assistant
+        { 
+          headers: { 
+            token: this.userId!,
+            phoneType: '1',
+            appVersion: '1.9.7'
+          } 
+        }
       );
 
       if (response.data.code !== 200) {
@@ -513,7 +554,7 @@ export class ACInfinityClient {
       }
       
       if (this.debug) {
-        this.log.debug(`[setDeviceModeSettingsLegacy] Successfully updated using Home Assistant exact approach`);
+        this.log.debug(`[setDeviceModeSettingsLegacy] Successfully updated using iPhone app approach (static payload with real settings)`);
       }
       
     } catch (error) {

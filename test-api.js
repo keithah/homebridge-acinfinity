@@ -36,7 +36,7 @@ class ACInfinityTest {
       baseURL: host,
       timeout: 15000,
       headers: {
-        'User-Agent': 'ACController/1.9.7 (com.acinfinity.humiture; build:533; iOS 18.5.0) Alamofire/5.10.2',
+        'User-Agent': 'ACController/1.8.2 (com.acinfinity.humiture; build:489; iOS 16.5.1) Alamofire/5.4.4',
         'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
       },
       httpAgent: httpAgent,
@@ -109,10 +109,10 @@ class ACInfinityTest {
     return response.data.data;
   }
 
-  async setFanSpeedOfficial(deviceId, portId, speed) {
-    console.log(`\n=== TESTING OFFICIAL APP APPROACH (Device: ${deviceId}, Port: ${portId}, Speed: ${speed}) ===`);
+  async setFanSpeedStaticHardcoded(deviceId, portId, speed) {
+    console.log(`\n=== TESTING STATIC HARDCODED PAYLOAD (AI+ APPROACH) (Device: ${deviceId}, Port: ${portId}, Speed: ${speed}) ===`);
     
-    // Exact payload format from Charles capture (official app)
+    // Use the exact hardcoded payload format from Homebridge plugin (for AI+ controllers)
     const params = new URLSearchParams({
       acitveTimerOff: '0',
       acitveTimerOn: '0',
@@ -156,7 +156,7 @@ class ACInfinityTest {
       moistureLowSwitch: '0',
       moistureLowValue: '0',
       offSpead: '0',
-      onSelfSpead: String(speed), // Try setting both fields
+      onSelfSpead: String(speed), // Set both fields to ensure it works
       onSpead: String(speed), // The actual speed we want to set
       onlyUpdateSpeed: '0',
       phHighSwitch: '0',
@@ -189,10 +189,10 @@ class ACInfinityTest {
       waterTempLowSwitch: '0',
       waterTempLowValue: '0',
       waterTempLowValueF: '32'
-      // NOTE: NO modeSetid field - this is the key difference!
+      // NOTE: No modeSetid field - this matches official app behavior
     });
 
-    console.log(`Sending official app format request...`);
+    console.log(`Sending hardcoded static payload...`);
     
     const response = await this.axios.post(
       API_URL_ADD_DEV_MODE,
@@ -202,16 +202,138 @@ class ACInfinityTest {
           token: this.userId,
           phoneType: '1',
           appVersion: '1.9.7',
-          minversion: '3.5' // Official app includes this for addDevMode
+          minversion: '3.5'
         } 
       }
     );
 
     if (response.data.code !== 200) {
-      throw new Error(`Official app format failed: ${JSON.stringify(response.data)}`);
+      throw new Error(`Static hardcoded payload failed: ${JSON.stringify(response.data)}`);
     }
 
-    console.log(`✅ Official app format fan speed set to ${speed} successfully`);
+    console.log(`✅ Static hardcoded payload - fan speed set to ${speed} successfully`);
+    return response.data;
+  }
+
+  async setFanSpeedStaticWithRealSettings(deviceId, portId, speed, deviceData) {
+    console.log(`\n=== TESTING STATIC PAYLOAD WITH REAL SETTINGS (Device: ${deviceId}, Port: ${portId}, Speed: ${speed}) ===`);
+    
+    // First get current settings to populate the static payload with real values
+    const getCurrentSettings = await this.axios.post(
+      '/api/dev/getdevModeSettingList',
+      new URLSearchParams({
+        devId: String(deviceId),
+        port: String(portId),
+      }),
+      { headers: { token: this.userId, phoneType: '1', appVersion: '1.9.7' } }
+    );
+
+    if (getCurrentSettings.data.code !== 200) {
+      throw new Error(`Get settings failed: ${JSON.stringify(getCurrentSettings.data)}`);
+    }
+
+    const settings = getCurrentSettings.data.data;
+    console.log(`Retrieved current settings - using real values for static payload`);
+    
+    // Use static payload format but populate with REAL current settings (iPhone app approach)
+    const params = new URLSearchParams({
+      acitveTimerOff: String(settings.acitveTimerOff || 0),
+      acitveTimerOn: String(settings.acitveTimerOn || 0),
+      activeCycleOff: String(settings.activeCycleOff || 0),
+      activeCycleOn: String(settings.activeCycleOn || 0),
+      activeHh: String(settings.activeHh || 0),
+      activeHt: String(settings.activeHt || 0),
+      activeHtVpd: String(settings.activeHtVpd || 0),
+      activeHtVpdNums: String(settings.activeHtVpdNums || 0),
+      activeLh: String(settings.activeLh || 0),
+      activeLt: String(settings.activeLt || 0),
+      activeLtVpd: String(settings.activeLtVpd || 0),
+      activeLtVpdNums: String(settings.activeLtVpdNums || 0),
+      atType: String(settings.atType || 2),
+      co2FanHighSwitch: String(settings.co2FanHighSwitch || 0),
+      co2FanHighValue: String(settings.co2FanHighValue || 0),
+      co2LowSwitch: String(settings.co2LowSwitch || 0),
+      co2LowValue: String(settings.co2LowValue || 0),
+      devHh: String(settings.devHh || 0),
+      devHt: String(settings.devHt || 0),
+      devHtf: String(settings.devHtf || 32),
+      devId: String(deviceId),
+      devLh: String(settings.devLh || 0),
+      devLt: String(settings.devLt || 0),
+      devLtf: String(settings.devLtf || 32),
+      devMacAddr: '',
+      ecOrTds: String(settings.ecOrTds || 0),
+      ecTdsLowSwitchEc: String(settings.ecTdsLowSwitchEc || 0),
+      ecTdsLowSwitchTds: String(settings.ecTdsLowSwitchTds || 0),
+      ecTdsLowValueEcMs: String(settings.ecTdsLowValueEcMs || 1),
+      ecTdsLowValueEcUs: String(settings.ecTdsLowValueEcUs || 0),
+      ecTdsLowValueTdsPpm: String(settings.ecTdsLowValueTdsPpm || 0),
+      ecTdsLowValueTdsPpt: String(settings.ecTdsLowValueTdsPpt || 1),
+      ecUnit: String(settings.ecUnit || 0),
+      externalPort: String(portId),
+      hTrend: String(settings.hTrend || 0),
+      humidity: String(settings.humidity || 0),
+      isOpenAutomation: String(settings.isOpenAutomation || 0),
+      masterPort: String(settings.masterPort || 0),
+      modeType: String(settings.modeType || 0),
+      moistureLowSwitch: String(settings.moistureLowSwitch || 0),
+      moistureLowValue: String(settings.moistureLowValue || 0),
+      offSpead: String(settings.offSpead || 0),
+      onSelfSpead: String(settings.onSelfSpead || 0), // Keep original value, don't change
+      onSpead: String(speed), // Only change the actual speed
+      onlyUpdateSpeed: String(settings.onlyUpdateSpeed || 0),
+      phHighSwitch: String(settings.phHighSwitch || 0),
+      phHighValue: String(settings.phHighValue || 0),
+      phLowSwitch: String(settings.phLowSwitch || 0),
+      phLowValue: String(settings.phLowValue || 0),
+      schedEndtTime: String(settings.schedEndtTime || 65535),
+      schedStartTime: String(settings.schedStartTime || 65535),
+      settingMode: String(settings.settingMode || 0),
+      speak: String(settings.speak || 0),
+      surplus: String(settings.surplus || 0),
+      tTrend: String(settings.tTrend || 0),
+      targetHumi: String(settings.targetHumi || 0),
+      targetHumiSwitch: String(settings.targetHumiSwitch || 0),
+      targetTSwitch: String(settings.targetTSwitch || 0),
+      targetTemp: String(settings.targetTemp || 0),
+      targetTempF: String(settings.targetTempF || 32),
+      targetVpd: String(settings.targetVpd || 0),
+      targetVpdSwitch: String(settings.targetVpdSwitch || 0),
+      tdsUnit: String(settings.tdsUnit || 0),
+      temperature: String(settings.temperature || 0),
+      temperatureF: String(settings.temperatureF || 0),
+      trend: String(settings.trend || 0),
+      unit: String(settings.unit || 0),
+      vpdSettingMode: String(settings.vpdSettingMode || 0),
+      waterLevelLowSwitch: String(settings.waterLevelLowSwitch || 0),
+      waterTempHighSwitch: String(settings.waterTempHighSwitch || 0),
+      waterTempHighValue: String(settings.waterTempHighValue || 0),
+      waterTempHighValueF: String(settings.waterTempHighValueF || 32),
+      waterTempLowSwitch: String(settings.waterTempLowSwitch || 0),
+      waterTempLowValue: String(settings.waterTempLowValue || 0),
+      waterTempLowValueF: String(settings.waterTempLowValueF || 32)
+      // NOTE: NO modeSetid field - this matches iPhone app behavior
+    });
+
+    console.log(`Sending static payload with real settings...`);
+    
+    const response = await this.axios.post(
+      API_URL_ADD_DEV_MODE,
+      params,
+      { 
+        headers: { 
+          token: this.userId,
+          phoneType: '1',
+          appVersion: '1.9.7'
+        } 
+      }
+    );
+
+    if (response.data.code !== 200) {
+      throw new Error(`Static payload with real settings failed: ${JSON.stringify(response.data)}`);
+    }
+
+    console.log(`✅ Static payload with real settings - fan speed set to ${speed} successfully`);
     return response.data;
   }
 
@@ -241,24 +363,72 @@ class ACInfinityTest {
     return response.data;
   }
 
-  async setFanSpeed(deviceId, portId, speed) {
-    console.log(`\n=== TESTING SET FAN SPEED (Device: ${deviceId}, Port: ${portId}, Speed: ${speed}) ===`);
+  async setFanSpeed(deviceId, portId, speed, deviceData) {
+    console.log(`\n=== AUTO-DETECTING CONTROLLER TYPE AND SETTING SPEED ===`);
+    console.log(`Device: ${deviceId}, Port: ${portId}, Speed: ${speed}`);
     
-    // First try the official app approach (from Charles capture)
-    try {
-      return await this.setFanSpeedOfficial(deviceId, portId, speed);
-    } catch (error) {
-      console.log(`Official app approach failed: ${error.message}`);
-    }
+    const deviceType = deviceData?.devType;
+    const isNewFramework = deviceData?.newFrameworkDevice;
     
-    // Then try the minimal approach
-    try {
-      return await this.setFanSpeedMinimal(deviceId, portId, speed);
-    } catch (error) {
-      console.log(`Minimal approach failed: ${error.message}`);
+    console.log(`Controller Type: ${deviceType}, newFrameworkDevice: ${isNewFramework}`);
+    
+    // Based on testing: AI+ controllers need hardcoded static payload, UIS 69 PRO needs real settings
+    if (deviceType === 20 || isNewFramework === true) {
+      // UIS 89 AI+ - uses hardcoded static payload like current Homebridge plugin
+      console.log(`📱 UIS 89 AI+ controller - using hardcoded static payload (Homebridge plugin approach)`);
+      try {
+        return await this.setFanSpeedStaticHardcoded(deviceId, portId, speed);
+      } catch (error) {
+        console.log(`AI+ hardcoded approach failed, trying iPhone app approach: ${error.message}`);
+        // Fallback to iPhone app approach if hardcoded fails
+        try {
+          return await this.setFanSpeedStaticWithRealSettings(deviceId, portId, speed, deviceData);
+        } catch (fallbackError) {
+          console.log(`iPhone app fallback also failed: ${fallbackError.message}`);
+          throw fallbackError;
+        }
+      }
+    } else if (deviceType === 11 || deviceType === 18 || isNewFramework === false) {
+      // UIS 69 PRO/PRO+ - iPhone app also uses static payload with real settings
+      console.log(`📱 UIS 69 PRO/PRO+ controller - using iPhone app approach (static payload with real settings)`);
+      try {
+        return await this.setFanSpeedStaticWithRealSettings(deviceId, portId, speed, deviceData);
+      } catch (error) {
+        console.log(`iPhone app approach failed, trying Home Assistant fallback: ${error.message}`);
+        // Fallback to Home Assistant approach if iPhone method fails
+        try {
+          console.log(`Trying Home Assistant fetch-merge approach as fallback...`);
+          return await this.setFanSpeedHomeAssistant(deviceId, portId, speed);
+        } catch (fallbackError) {
+          console.log(`Home Assistant fallback also failed: ${fallbackError.message}`);
+          throw fallbackError;
+        }
+      }
+    } else {
+      // Unknown controller type - try iPhone app approach first, then HA fallback
+      console.log(`❓ Unknown controller type ${deviceType} - trying iPhone app approach first`);
+      
+      try {
+        console.log(`Trying iPhone app approach (static payload with real settings)...`);
+        return await this.setFanSpeedStaticWithRealSettings(deviceId, portId, speed, deviceData);
+      } catch (error) {
+        console.log(`iPhone app approach failed: ${error.message}`);
+        
+        try {
+          console.log(`Trying Home Assistant fetch-merge approach as fallback...`);
+          return await this.setFanSpeedHomeAssistant(deviceId, portId, speed);
+        } catch (fallbackError) {
+          console.log(`Both approaches failed: ${fallbackError.message}`);
+          throw fallbackError;
+        }
+      }
     }
+  }
 
-    // First get current settings (like Homebridge does)
+  async setFanSpeedHomeAssistant(deviceId, portId, speed) {
+    console.log(`\n=== TESTING HOME ASSISTANT FETCH-MERGE APPROACH ===`);
+    
+    // Get current settings (like Homebridge does)
     const getCurrentSettings = await this.axios.post(
       '/api/dev/getdevModeSettingList',
       new URLSearchParams({
@@ -317,7 +487,7 @@ class ACInfinityTest {
       throw new Error(`Set speed failed: ${JSON.stringify(response.data)}`);
     }
 
-    console.log(`✅ Fan speed set to ${speed} successfully`);
+    console.log(`✅ Home Assistant approach - fan speed set to ${speed} successfully`);
     return response.data;
   }
 }
@@ -367,7 +537,19 @@ async function main() {
       const portId = parseInt(args[5]);
       const speed = parseInt(args[6]);
       
-      await client.setFanSpeed(deviceId, portId, speed);
+      // Get device data first for auto-detection
+      console.log('Getting device data for auto-detection...');
+      const devices = await client.getDevices();
+      const device = devices.find(d => d.devId === deviceId || d.devId === parseInt(deviceId));
+      
+      if (!device) {
+        console.log(`Device ${deviceId} not found`);
+        process.exit(1);
+      }
+      
+      console.log(`Found device: ${device.devName} (Type: ${device.devType}, newFrameworkDevice: ${device.newFrameworkDevice})`);
+      
+      await client.setFanSpeed(deviceId, portId, speed, device);
     } else {
       console.log(`Unknown command: ${command}`);
       process.exit(1);

@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0-beta.4] - 2025-08-08
+
+### Fixed
+- **UIS 69 PRO Complete Fix**: Implemented iPhone app approach for legacy controllers
+  - Uses static payload with real device settings (not hardcoded zeros)
+  - Fetches current settings first, then populates static payload format
+  - Eliminates 403 "Data saving failed" errors on UIS 69 PRO controllers
+  - Tested and confirmed working with actual UIS 69 PRO device
+- **Universal Controller Support**: Perfect hybrid approach now working for both controller types
+  - **UIS 89 AI+** (Type 20): Uses hardcoded static payload (existing approach)
+  - **UIS 69 PRO** (Type 11): Uses iPhone app static payload with real settings (new approach)
+  - Auto-detection chooses the correct method based on device type and newFrameworkDevice flag
+
+### Technical Changes
+- Completely rewrote `setDeviceModeSettingsLegacy()` to use iPhone app approach
+- Legacy controllers now fetch current settings and use them in static payload format
+- Removed Home Assistant fetch-merge approach that wasn't working reliably
+- Uses iPhone app User-Agent (1.9.7) and headers for legacy controllers
+- Maintains proper device settings while only changing the target speed value
+
+### Background
+Testing with both controller types revealed that UIS 69 PRO controllers work perfectly with the iPhone app's approach: fetch current settings and populate them into a static payload format (without modeSetid field). This approach was captured from iPhone app network traffic and has been confirmed working with real devices.
+
 ## [1.3.0-beta.3] - 2025-08-08
 
 ### Fixed
