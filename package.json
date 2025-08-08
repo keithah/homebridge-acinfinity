@@ -13,7 +13,6 @@
     "dist",
     "config.schema.json",
     "CHANGELOG.md",
-    "API.md",
     "API_REFERENCE.md"
   ],
   "keywords": [
