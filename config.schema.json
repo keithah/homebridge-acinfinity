@@ -43,6 +43,12 @@
         "default": false,
         "description": "Create separate HomeKit accessories for controller temperature and humidity sensors"
       },
+      "exposePortDevices": {
+        "title": "Expose Port Devices",
+        "type": "boolean",
+        "default": true,
+        "description": "Create HomeKit accessories for devices connected to controller ports (fans, lights, etc.). Note: Devices are detected by port resistance, so they should appear even when not actively running."
+      },
       "debug": {
         "title": "Debug Mode",
         "type": "boolean",

@@ -22,6 +22,7 @@ export interface ACInfinityPlatformConfig extends PlatformConfig {
   host?: string;
   pollingInterval?: number;
   exposeSensors?: boolean;
+  exposePortDevices?: boolean;
   debug?: boolean;
 }
 
@@ -143,12 +144,13 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
         const deviceInfo = device[ControllerPropertyKey.DEVICE_INFO];
         
         if (deviceInfo && ControllerPropertyKey.PORTS in deviceInfo && Array.isArray(deviceInfo[ControllerPropertyKey.PORTS])) {
-          // Create individual accessories for each port with devices connected
-          for (const port of deviceInfo[ControllerPropertyKey.PORTS]) {
-            // Only show ports that have devices connected (resistance < 65535 indicates a connected device)
-            // or are explicitly online. Empty ports have resistance = 65535
-            const hasConnectedDevice = port.portResistance && port.portResistance < 65535;
-            const isOnline = port.online;
+          // Create individual accessories for each port with devices connected (if enabled)
+          if (this.config.exposePortDevices !== false) { // Default to true if not specified
+            for (const port of deviceInfo[ControllerPropertyKey.PORTS]) {
+              // Only show ports that have devices connected (resistance < 65535 indicates a connected device)
+              // or are explicitly online. Empty ports have resistance = 65535
+              const hasConnectedDevice = port.portResistance && port.portResistance < 65535;
+              const isOnline = port.online;
             
             if (!hasConnectedDevice && !isOnline) {
               if (this.config.debug) {
@@ -193,6 +195,11 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
               const fanPort = new ACInfinityFanPort(this, accessory);
               this.portInstances.set(portUuid, fanPort);
               this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+            }
+          }
+          } else {
+            if (this.config.debug) {
+              this.log.info(`Port devices disabled in configuration for ${device.devName} - only sensors will be exposed`);
             }
           }
         }

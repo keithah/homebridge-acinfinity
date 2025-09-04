@@ -25,7 +25,7 @@ export class ACInfinityFanPort {
     
     this.informationService
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'AC Infinity')
-      .setCharacteristic(this.platform.Characteristic.Model, 'Fan Port')
+      .setCharacteristic(this.platform.Characteristic.Model, 'Port Device')
       .setCharacteristic(this.platform.Characteristic.SerialNumber, `${device[ControllerPropertyKey.MAC_ADDR] || 'Unknown'}-Port${this.portNumber}`)
       .setCharacteristic(this.platform.Characteristic.FirmwareRevision, device[ControllerPropertyKey.SW_VERSION] || '1.0.0');
 
