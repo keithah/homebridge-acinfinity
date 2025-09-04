@@ -143,14 +143,22 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
         const deviceInfo = device[ControllerPropertyKey.DEVICE_INFO];
         
         if (deviceInfo && ControllerPropertyKey.PORTS in deviceInfo && Array.isArray(deviceInfo[ControllerPropertyKey.PORTS])) {
-          // Create individual accessories for each active port only
+          // Create individual accessories for each port with devices connected
           for (const port of deviceInfo[ControllerPropertyKey.PORTS]) {
-            // Skip inactive/offline ports
-            if (!port.online || port.loadState === 0) {
+            // Only show ports that have devices connected (resistance < 65535 indicates a connected device)
+            // or are explicitly online. Empty ports have resistance = 65535
+            const hasConnectedDevice = port.portResistance && port.portResistance < 65535;
+            const isOnline = port.online;
+            
+            if (!hasConnectedDevice && !isOnline) {
               if (this.config.debug) {
-                this.log.debug(`Skipping inactive port ${port[PortPropertyKey.PORT]} (online: ${port.online}, loadState: ${port.loadState})`);
+                this.log.debug(`Skipping port ${port[PortPropertyKey.PORT]} - no device connected (online: ${port.online}, resistance: ${port.portResistance})`);
               }
               continue;
+            }
+            
+            if (this.config.debug) {
+              this.log.info(`Exposing port ${port[PortPropertyKey.PORT]} to HomeKit (hasDevice: ${hasConnectedDevice}, online: ${isOnline}, resistance: ${port.portResistance})`);
             }
             const portNumber = port[PortPropertyKey.PORT];
             const portName = port[PortPropertyKey.NAME] || `${device.devName} Port ${portNumber}`;
