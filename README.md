@@ -3,47 +3,27 @@
 [![npm version](https://img.shields.io/npm/v/homebridge-acinfinity.svg)](https://www.npmjs.com/package/homebridge-acinfinity)
 [![npm downloads](https://img.shields.io/npm/dt/homebridge-acinfinity.svg)](https://www.npmjs.com/package/homebridge-acinfinity)
 
-**Universal Homebridge plugin for AC Infinity controllers with 100% reliability!**
-
-## ✅ Universal Controller Support
-
-**v1.3.0** introduces **complete universal support** for all AC Infinity controllers:
-
-- **🔧 UIS 89 AI+**: Perfect support (unchanged)
-- **🛠️ UIS 69 PRO**: **COMPLETELY FIXED** - No more 403 "Data saving failed" errors!
-- **🚀 UIS 69 PRO+**: Full support with auto-detection
-- **🎯 Auto-Detection**: Plugin automatically detects your controller type and uses the optimal API approach
-- **💯 100% Reliability**: Both old and new controllers now work flawlessly
+Homebridge plugin for AC Infinity UIS controllers.
 
 ## Features
 
-- **Universal Controller Support**: Works with ALL AC Infinity UIS Controllers (69 Pro, 69 Pro+, 89 AI+)
-- **Intelligent API Detection**: Automatically uses the correct approach for your controller type
-- **Perfect Fan Control**: Speed control (0-100%) with instant response and no errors
-- **Environmental Monitoring**: Temperature, humidity, and VPD sensors
-- **Advanced Sensor Support**: External probes (temperature, humidity, CO2)
-- **Auto Mode Detection**: Displays "Auto" vs "Manual" mode correctly in HomeKit
-- **Speed Caching**: Prevents HomeKit reverting during device update delays
-- **Auto-Discovery**: Finds all your devices automatically
-- **Comprehensive Logging**: Debug mode shows exactly what's happening
+- Fan speed control (0-100%)
+- Temperature and humidity monitoring
+- VPD sensor support
+- External probe support (temperature, humidity, CO2, soil, water)
+- Auto/Manual mode detection
+- Automatic device discovery
+- Per-port device control
 
 ## Installation
 
-1. Install Homebridge (if not already installed):
-```bash
-npm install -g homebridge
-```
-
-2. Install the plugin:
 ```bash
 npm install -g homebridge-acinfinity
 ```
 
-3. Configure the plugin in your Homebridge config.json
-
 ## Configuration
 
-Add the following to your Homebridge `config.json`:
+Add to your Homebridge `config.json`:
 
 ```json
 {
@@ -61,94 +41,139 @@ Add the following to your Homebridge `config.json`:
 
 ### Configuration Options
 
-- `platform` (required): Must be "ACInfinity"
-- `name` (required): Display name for the platform
-- `email` (required): Your AC Infinity account email
-- `password` (required): Your AC Infinity account password
-- `pollingInterval` (optional): How often to poll for updates in seconds (default: 10, min: 5, max: 600)
-- `host` (optional): API host URL (default: "http://www.acinfinityserver.com")
-- `debug` (optional): Enable debug logging for troubleshooting API issues (default: false)
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `platform` | string | Yes | - | Must be "ACInfinity" |
+| `name` | string | Yes | - | Display name for the platform |
+| `email` | string | Yes | - | AC Infinity account email |
+| `password` | string | Yes | - | AC Infinity account password |
+| `pollingInterval` | integer | No | 10 | Update interval in seconds (5-600) |
+| `exposeSensors` | boolean | No | false | Expose temperature/humidity sensors |
+| `exposePortDevices` | boolean | No | true | Expose port devices as fans |
+| `host` | string | No | http://www.acinfinityserver.com | API host URL |
+| `debug` | boolean | No | false | Enable debug logging |
 
-## Supported Devices
+## Device Support
 
-✅ **Universal Support** - All controllers work perfectly:
+### Supported Controllers
 
-- **UIS Controller 89 AI+** (Type 20) - Uses optimized hardcoded payload approach
-- **UIS Controller 69 PRO** (Type 11) - Uses iPhone app approach (static payload with real settings)
-- **UIS Controller 69 PRO+** (Type 18) - Uses iPhone app approach (static payload with real settings)
+| Device | Model | Type | Status |
+|--------|-------|------|--------|
+| UIS Controller 89 AI+ | CTR89Q | 20 | ✅ Supported |
+| UIS Controller 69 Pro+ | CTR69Q | 18 | ✅ Supported |
+| UIS Controller 69 Pro | CTR69P | 11 | ✅ Supported |
 
-The plugin **automatically detects** your controller type and uses the appropriate API approach. No configuration needed!
+### Supported Sensors
 
-## Exposed Services
+| Sensor Type | Model | Features |
+|-------------|-------|----------|
+| Temperature Probe | AC-SPC24 | Temperature, Humidity, VPD |
+| CO2 + Light Sensor | AC-COS3 | CO2, Light Level |
+| Water Sensor | AC-WDS3 | Water Temperature, pH, EC/TDS |
+| Soil Sensor | AC-SLS3 | Soil Moisture |
 
-### Per Controller:
-- **Temperature Sensor**: Built-in temperature sensor
-- **Humidity Sensor**: Built-in humidity sensor
+### Unsupported Devices
 
-### Per Port:
-- **Fan**: Control each port as a fan accessory
-  - On/Off control
-  - Speed control (0-100%)
-  - Current state monitoring
+| Device | Status | Notes |
+|--------|--------|-------|
+| Airtap T4/T6 Register Fans | ❌ Not Supported | Standalone devices without controller architecture. See "Help Wanted" below. |
+| Controller 67 (Bluetooth) | ❌ Not Supported | Bluetooth-only, no cloud API access |
+| Controller 69 (Base) | ❌ Not Supported | Bluetooth-only, no cloud API access |
 
-### Additional Sensors (AI Controllers):
-- **Probe Temperature**: External temperature probes
-- **Probe Humidity**: External humidity probes
-- **CO2 Sensor**: CO2 monitoring with detection alerts
+## HomeKit Services
 
-## Notes
+### Controller Services
 
-- The plugin uses the same API as the official AC Infinity mobile app
-- Password is limited to 25 characters (same as the mobile app)
-- All temperature values are in Celsius in HomeKit
-- Fan speed is mapped from AC Infinity's 0-10 scale to HomeKit's 0-100%
+Each controller exposes:
+- **Temperature Sensor** (optional, via `exposeSensors`)
+- **Humidity Sensor** (optional, via `exposeSensors`)
+
+### Port Services
+
+Each connected port device exposes:
+- **Fan Service**
+  - Active (On/Off)
+  - Rotation Speed (0-100%)
+  - Current Fan State (Idle/Blowing Air)
+  - Target Fan State (Manual/Auto)
+
+### External Sensor Services
+
+External sensors expose appropriate HomeKit services:
+- Temperature sensors
+- Humidity sensors
+- CO2 sensors
+- Custom characteristics for water sensors
 
 ## Troubleshooting
 
-### ✅ v1.3.0 Fixed Major Issues
+### Common Issues
 
-**The "403 Data saving failed" errors that affected UIS 69 PRO controllers have been completely resolved!** If you're still experiencing issues, try:
+**No Devices Found**
+- Verify devices are online in the AC Infinity mobile app
+- Check credentials are correct
+- Ensure devices are registered to your account
 
-1. **Update to Latest Version**: Ensure you're running v1.3.0 or later
-   ```bash
-   npm update homebridge-acinfinity
-   ```
+**Authentication Failed**
+- Verify email and password
+- Password is limited to first 25 characters
 
-2. **Enable Debug Mode** to see which API approach is being used:
-   ```json
-   {
-     "platform": "ACInfinity",
-     "name": "AC Infinity", 
-     "email": "your-email@example.com",
-     "password": "your-password",
-     "debug": true
-   }
-   ```
+**Speed Changes Not Persisting**
+- Update to v1.3.2 or later
+- This was a known issue with Controller 69 Pro, now fixed
 
-3. **Common Issues**:
-   - **Authentication Failed**: Ensure your email and password are correct
-   - **No Devices Found**: Make sure your devices are online and accessible through the AC Infinity app
-   - **Slow Updates**: Try adjusting the polling interval (5-600 seconds)
+**Slow Updates**
+- Adjust `pollingInterval` (minimum 5 seconds)
+- Lower values increase responsiveness but may cause rate limiting
 
-### Debug Logging
+### Debug Mode
 
-When debug mode is enabled, you'll see:
-- `[setDeviceModeSettings] Using new framework (static payload) approach for device type 20` (UIS 89 AI+)
-- `[setDeviceModeSettings] Using legacy (iPhone app) approach for device type 11` (UIS 69 PRO)
-- Controller auto-detection and API approach selection
-- Success/failure of all API operations
+Enable debug logging to troubleshoot:
 
-## Technical Details
+```json
+{
+  "platform": "ACInfinity",
+  "debug": true
+}
+```
 
-For developers and advanced users, see [API_REFERENCE.md](API_REFERENCE.md) for complete technical documentation including:
+Debug logs show:
+- Device discovery and detection
+- API calls and responses
+- Controller type detection
+- Error details and stack traces
+
+## Help Wanted: Airtap Support
+
+We need help adding support for **Airtap T4/T6 register booster fans**. These standalone devices use a different API structure than controller-based devices.
+
+**How you can help:**
+
+1. Create a GitHub issue titled "Airtap Support - Device Data"
+2. Enable debug mode (`"debug": true`)
+3. Share the device data from logs (look for `=== DETAILED DEVICE DEBUG INFO ===`)
+4. Or contact maintainers to arrange temporary test account access
+
+**Alternative:** The [ESP32 module replacement](https://silocitylabs.com/post/2025/esp32-airtap-esphome/) provides ESPHome/Home Assistant integration.
+
+## Technical Documentation
+
+See [API_REFERENCE.md](API_REFERENCE.md) for:
 - AC Infinity API endpoints and payload formats
-- Controller-specific approaches and detection logic
+- Controller-specific implementation details
 - Network analysis methodology
-- Security considerations
+- Common API issues and solutions
+
+## Notes
+
+- Uses the same API as the official AC Infinity mobile app
+- All communication over HTTP (not HTTPS)
+- Temperature values reported in Celsius
+- Fan speed mapped from 0-10 (AC Infinity) to 0-100% (HomeKit)
 
 ## Credits
 
-This plugin is based on the [homeassistant-acinfinity](https://github.com/dalinicus/homeassistant-acinfinity) integration by @dalinicus.
+Based on [homeassistant-acinfinity](https://github.com/dalinicus/homeassistant-acinfinity) by @dalinicus.
 
 ## License
 

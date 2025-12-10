@@ -320,6 +320,9 @@ export class ACInfinityClient {
       this.log.debug(`[setDeviceModeSettingsNewFramework] Using official app format with speed: ${speed}`);
     }
 
+    // IMPORTANT: Set modeType to 2 (ON) when speed > 0, or 0 (OFF) when speed is 0
+    const modeType = speed > 0 ? 2 : 0;
+
     // Use the exact payload format from official AC Infinity app (from Charles capture)
     const params = new URLSearchParams({
       acitveTimerOff: '0',
@@ -360,7 +363,7 @@ export class ACInfinityClient {
       humidity: '0',
       isOpenAutomation: '0',
       masterPort: '0',
-      modeType: '0',
+      modeType: String(modeType), // Set to 2 (ON) when speed > 0, otherwise 0 (OFF)
       moistureLowSwitch: '0',
       moistureLowValue: '0',
       offSpead: '0',
@@ -453,6 +456,9 @@ export class ACInfinityClient {
       }
 
       // Step 2: Create static payload with real device settings (iPhone app format)
+      // IMPORTANT: Set modeType to 2 (ON) when speed > 0, or 0 (OFF) when speed is 0
+      const modeType = speed > 0 ? 2 : 0;
+
       const params = new URLSearchParams({
         acitveTimerOff: String(settings.acitveTimerOff || 0),
         acitveTimerOn: String(settings.acitveTimerOn || 0),
@@ -492,7 +498,7 @@ export class ACInfinityClient {
         humidity: String(settings.humidity || 0),
         isOpenAutomation: String(settings.isOpenAutomation || 0),
         masterPort: String(settings.masterPort || 0),
-        modeType: String(settings.modeType || 0),
+        modeType: String(modeType), // Set to 2 (ON) when speed > 0, otherwise 0 (OFF)
         moistureLowSwitch: String(settings.moistureLowSwitch || 0),
         moistureLowValue: String(settings.moistureLowValue || 0),
         offSpead: String(settings.offSpead || 0),
@@ -533,7 +539,7 @@ export class ACInfinityClient {
       });
 
       if (this.debug) {
-        this.log.debug(`[setDeviceModeSettingsLegacy] Sending static payload with real device settings`);
+        this.log.debug(`[setDeviceModeSettingsLegacy] Sending static payload with real device settings (modeType=${modeType}, speed=${speed})`);
       }
 
       // Step 3: Send using iPhone app User-Agent and headers

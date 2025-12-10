@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.2] - 2025-12-09
+
+### Fixed
+- **🐛 Controller 69 Pro Mode Activation Fix**: Fixed issue where speed changes weren't persisting on Controller 69 Pro
+  - Root cause: Controller was in OFF mode (`curMode: 1`) and ignoring speed commands
+  - Solution: Now automatically sets `modeType=2` (ON) when speed > 0, and `modeType=0` (OFF) when speed = 0
+  - Affects both legacy and new framework devices
+  - Fixes issue where HomeKit would show speed change briefly then revert to 0%
+  - Related to [GitHub Issue #X]
+
+### Technical Changes
+- Modified `setDeviceModeSettingsLegacy()` to dynamically set `modeType` based on requested speed
+- Modified `setDeviceModeSettingsNewFramework()` to dynamically set `modeType` based on requested speed
+- Added debug logging to show `modeType` value being sent in API calls
+
+## [1.3.1] - 2025-12-04
+
+### Fixed
+- Port device visibility improvements for connected devices
+
 ## [1.3.0] - 2025-08-08
 
 ### 🎉 Universal Controller Support - Complete Fix

@@ -88,27 +88,39 @@ Content-Type: application/x-www-form-urlencoded
 [See Controller-Specific Payloads below]
 ```
 
-## Controller Types
+## Device Types
 
-AC Infinity manufactures different controller types that require different API approaches:
+AC Infinity manufactures different types of devices:
 
-### UIS 89 AI+ (Type 20)
+### Supported: Controller-Based Devices
+
+These devices have a central controller with USB-C ports for connecting fans and sensors:
+
+#### UIS 89 AI+ (Type 20)
 - **Device Type**: 20
 - **newFrameworkDevice**: true
 - **API Approach**: Hardcoded static payload
 - **User-Agent**: `ACController/1.9.7 (com.acinfinity.humiture; build:533; iOS 18.5.0) Alamofire/5.10.2`
 
-### UIS 69 PRO (Type 11)  
+#### UIS 69 PRO (Type 11)
 - **Device Type**: 11
 - **newFrameworkDevice**: false
 - **API Approach**: Static payload with real device settings
 - **User-Agent**: `ACController/1.9.7 (com.acinfinity.humiture; build:533; iOS 18.5.0) Alamofire/5.10.2`
 
-### UIS 69 PRO+ (Type 18)
-- **Device Type**: 18  
+#### UIS 69 PRO+ (Type 18)
+- **Device Type**: 18
 - **newFrameworkDevice**: false
 - **API Approach**: Static payload with real device settings
 - **User-Agent**: `ACController/1.9.7 (com.acinfinity.humiture; build:533; iOS 18.5.0) Alamofire/5.10.2`
+
+### Unsupported: Standalone Devices
+
+**Airtap T4/T6 Register Booster Fans** - These standalone Wi-Fi devices don't have a controller or ports structure. The API likely returns device data without the `deviceInfo.ports` array.
+
+**Status**: Not yet supported. Need device data from actual Airtap users to implement support.
+
+**Workaround**: Use [ESP32 module replacement](https://silocitylabs.com/post/2025/esp32-airtap-esphome/) for ESPHome/Home Assistant integration.
 
 ## Controller-Specific Payloads
 
@@ -120,8 +132,13 @@ For newer controllers, use a static payload with hardcoded values:
 POST /api/dev/addDevMode
 Content-Type: application/x-www-form-urlencoded
 
-acitveTimerOff=0&acitveTimerOn=0&activeCycleOff=0&activeCycleOn=0&activeHh=0&activeHt=0&activeHtVpd=0&activeHtVpdNums=0&activeLh=0&activeLt=0&activeLtVpd=0&activeLtVpdNums=0&atType=2&co2FanHighSwitch=0&co2FanHighValue=0&co2LowSwitch=0&co2LowValue=0&devHh=0&devHt=0&devHtf=32&devId=1234567890123456789&devLh=0&devLt=0&devLtf=32&devMacAddr=&ecOrTds=0&ecTdsLowSwitchEc=0&ecTdsLowSwitchTds=0&ecTdsLowValueEcMs=1&ecTdsLowValueEcUs=0&ecTdsLowValueTdsPpm=0&ecTdsLowValueTdsPpt=1&ecUnit=0&externalPort=1&hTrend=0&humidity=0&isOpenAutomation=0&masterPort=0&modeType=0&moistureLowSwitch=0&moistureLowValue=0&offSpead=0&onSelfSpead=7&onSpead=7&onlyUpdateSpeed=0&phHighSwitch=0&phHighValue=0&phLowSwitch=0&phLowValue=0&schedEndtTime=65535&schedStartTime=65535&settingMode=0&speak=0&surplus=0&tTrend=0&targetHumi=0&targetHumiSwitch=0&targetTSwitch=0&targetTemp=0&targetTempF=32&targetVpd=0&targetVpdSwitch=0&tdsUnit=0&temperature=0&temperatureF=0&trend=0&unit=0&vpdSettingMode=0&waterLevelLowSwitch=0&waterTempHighSwitch=0&waterTempHighValue=0&waterTempHighValueF=32&waterTempLowSwitch=0&waterTempLowValue=0&waterTempLowValueF=32
+acitveTimerOff=0&acitveTimerOn=0&activeCycleOff=0&activeCycleOn=0&activeHh=0&activeHt=0&activeHtVpd=0&activeHtVpdNums=0&activeLh=0&activeLt=0&activeLtVpd=0&activeLtVpdNums=0&atType=2&co2FanHighSwitch=0&co2FanHighValue=0&co2LowSwitch=0&co2LowValue=0&devHh=0&devHt=0&devHtf=32&devId=1234567890123456789&devLh=0&devLt=0&devLtf=32&devMacAddr=&ecOrTds=0&ecTdsLowSwitchEc=0&ecTdsLowSwitchTds=0&ecTdsLowValueEcMs=1&ecTdsLowValueEcUs=0&ecTdsLowValueTdsPpm=0&ecTdsLowValueTdsPpt=1&ecUnit=0&externalPort=1&hTrend=0&humidity=0&isOpenAutomation=0&masterPort=0&modeType=2&moistureLowSwitch=0&moistureLowValue=0&offSpead=0&onSelfSpead=7&onSpead=7&onlyUpdateSpeed=0&phHighSwitch=0&phHighValue=0&phLowSwitch=0&phLowValue=0&schedEndtTime=65535&schedStartTime=65535&settingMode=0&speak=0&surplus=0&tTrend=0&targetHumi=0&targetHumiSwitch=0&targetTSwitch=0&targetTemp=0&targetTempF=32&targetVpd=0&targetVpdSwitch=0&tdsUnit=0&temperature=0&temperatureF=0&trend=0&unit=0&vpdSettingMode=0&waterLevelLowSwitch=0&waterTempHighSwitch=0&waterTempHighValue=0&waterTempHighValueF=32&waterTempLowSwitch=0&waterTempLowValue=0&waterTempLowValueF=32
 ```
+
+**Key Parameters**:
+- `onSpead=7`: Target fan speed (0-10)
+- `modeType=2`: Set to ON mode (use `0` to turn off)
+- `externalPort=1`: Port number
 
 Headers:
 ```
@@ -156,7 +173,8 @@ appVersion: 1.9.7
 **Critical Differences**:
 - Populate payload with actual device settings (not zeros)
 - **Omit the `modeSetid` field** (this causes 403 errors)
-- Only change the `onSpead` parameter to set fan speed
+- Set `modeType=2` when `onSpead > 0` to activate the fan (or `modeType=0` to turn off)
+- Only change the `onSpead` and `modeType` parameters
 - Keep all other values as retrieved from current settings
 
 ## Key API Fields
@@ -178,11 +196,15 @@ appVersion: 1.9.7
 - **vpdnums**: VPD value (×100, e.g., 143 = 1.43 kPa)
 
 ### Mode Detection
-- **curMode**: Current operating mode
+- **curMode**: Current operating mode (read-only status)
   - `1` = OFF
-  - `2` = ON (Manual)  
+  - `2` = ON (Manual)
   - `3` = AUTO
   - `8` = VPD
+- **modeType**: Mode to set when changing settings
+  - `0` = OFF
+  - `2` = ON (Manual)
+  - **Important**: Must set `modeType=2` when changing speed to activate the fan
 
 ### Port Status
 - **online**: Port connection status (0/1)
@@ -198,6 +220,38 @@ appVersion: 1.9.7
 - **10001**: Authentication failed
 - **100001**: Generic request error
 - **999999**: Operation failed (usually unsupported controller)
+
+## Common Issues
+
+### Speed Changes Not Persisting
+
+**Symptom**: API returns 200 success, but controller doesn't change speed. Speed reverts to 0 after a few seconds.
+
+**Root Cause**: Controller is in OFF mode (`curMode: 1`). The API accepts speed changes but the controller ignores them when not activated.
+
+**Solution**: Always set `modeType=2` (ON) when setting `onSpead > 0`. Set `modeType=0` when turning off.
+
+**Example**:
+```
+// Wrong - speed won't persist if controller is OFF
+onSpead=5&modeType=0
+
+// Correct - activates controller and sets speed
+onSpead=5&modeType=2
+
+// Correct - turns off controller
+onSpead=0&modeType=0
+```
+
+### "Data saving failed" (403)
+
+**Symptom**: 403 error when trying to set fan speed on UIS 69 PRO.
+
+**Root Cause**: Including `modeSetid` field or using wrong payload format.
+
+**Solution**:
+- For UIS 69 PRO: Use static payload with real device settings (NO `modeSetid`)
+- For UIS 89 AI+: Use hardcoded static payload
 
 ## Rate Limiting
 
@@ -291,4 +345,4 @@ node test-api.js http://www.acinfinityserver.com email@example.com password123 s
 
 ---
 
-*This documentation reflects the current understanding of the AC Infinity API as of August 2025. The API may change without notice as it's not officially documented by AC Infinity.*
+*This documentation reflects the current understanding of the AC Infinity API as of December 2025. The API may change without notice as it's not officially documented by AC Infinity.*
