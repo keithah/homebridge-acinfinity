@@ -4,6 +4,10 @@ on:
   release:
     types: [published]
 
+permissions:
+  id-token: write  # Required for OIDC authentication with npm
+  contents: read
+
 jobs:
   publish:
     timeout-minutes: 10
@@ -38,6 +42,4 @@ jobs:
         fi
     
     - name: Publish to npm
-      run: npm publish --tag ${{ steps.npm-tag.outputs.tag }}
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      run: npm publish --provenance --tag ${{ steps.npm-tag.outputs.tag }}
