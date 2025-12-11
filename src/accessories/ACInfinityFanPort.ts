@@ -64,31 +64,24 @@ export class ACInfinityFanPort {
   async setActive(value: CharacteristicValue): Promise<void> {
     const active = value === this.platform.Characteristic.Active.ACTIVE;
     const speed = active ? 10 : 0; // Default to speed 10 when turning on
-    this.platform.log.info(`[FanPort] SETACTIVE CALLED: port ${this.portNumber} device ${this.deviceId} active=${active} speed=${speed}`);
-    
+    this.platform.log.info(`[FanPort] Turning ${active ? 'on' : 'off'} port ${this.portNumber}`);
+
     try {
-      this.platform.log.info(`[FanPort] Making API call to set active=${active} (speed=${speed}) for port ${this.portNumber}...`);
       const device = this.accessory.context.device;
       await this.platform.client.setDeviceModeSettings(
-        this.deviceId, 
-        this.portNumber, 
-        [[PortControlKey.ON_SPEED, speed]], 
-        device?.devType, 
+        this.deviceId,
+        this.portNumber,
+        [[PortControlKey.ON_SPEED, speed]],
+        device?.devType,
         device
       );
-      this.platform.log.info(`[FanPort] SUCCESS: Active state set to ${active} for port ${this.portNumber}`);
-      
+
       // Cache the speed we just set to avoid reverting due to stale API data
       this.lastSetSpeed = speed;
       this.lastSetTime = Date.now();
     } catch (error) {
-      this.platform.log.error(`[FanPort] ERROR setting active state for port ${this.portNumber}:`, error);
-      if (error instanceof Error) {
-        this.platform.log.error(`[FanPort] Error details - Name: ${error.name}, Message: ${error.message}`);
-        if (error.stack) {
-          this.platform.log.error(`[FanPort] Stack trace:`, error.stack);
-        }
-      }
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.platform.log.error(`[FanPort] Failed to set active state for port ${this.portNumber}: ${errorMessage}`);
       throw new this.platform.api.hap.HapStatusError(-70402);
     }
   }
@@ -136,71 +129,57 @@ export class ACInfinityFanPort {
     const now = Date.now();
     if (this.lastSetSpeed !== null && (now - this.lastSetTime) < CACHE_DURATION) {
       const cachedValue = this.lastSetSpeed * 10;
-      this.platform.log.info(`[FanPort] GETSPEED: port ${this.portNumber} returning cached value ${cachedValue}% (set ${Math.round((now - this.lastSetTime) / 1000)}s ago)`);
+      if (this.platform.config.debug) {
+        this.platform.log.debug(`[FanPort] Returning cached speed ${cachedValue}% for port ${this.portNumber} (set ${Math.round((now - this.lastSetTime) / 1000)}s ago)`);
+      }
       return cachedValue;
     }
-    
+
     const port = this.accessory.context.port;
     if (!port) {
-      this.platform.log.info(`[FanPort] GETSPEED: No port data available for port ${this.portNumber} - returning 0`);
+      if (this.platform.config.debug) {
+        this.platform.log.debug(`[FanPort] No port data available for port ${this.portNumber} - returning 0`);
+      }
       return 0;
     }
-    
+
     // Use the 'speak' field which represents the actual current power level (0-10)
     const currentPower = port[PortPropertyKey.SPEAK] || 0;
     const homekitValue = currentPower * 10;
-    
-    this.platform.log.info(`[FanPort] GETSPEED: port ${this.portNumber} speak=${currentPower} -> HomeKit=${homekitValue}%`);
-    
+
     if (this.platform.config.debug) {
-      this.platform.log.debug(`[FanPort] Port data: ${JSON.stringify(port, null, 2)}`);
+      this.platform.log.debug(`[FanPort] Current speed for port ${this.portNumber}: ${homekitValue}% (speak=${currentPower})`);
     }
-    
+
     return homekitValue; // Convert 0-10 to 0-100
   }
 
   async setSpeed(value: CharacteristicValue): Promise<void> {
-    this.platform.log.info(`[FanPort] SETSPEED CALLED: port ${this.portNumber} device ${this.deviceId} to ${Math.round(Number(value) / 10)} (HomeKit: ${value})`);
-    
+    const speed = Math.round(Number(value) / 10); // Convert 0-100 to 0-10
+    this.platform.log.info(`[FanPort] Setting speed to ${speed * 10}% for port ${this.portNumber}`);
+
     try {
-      const speed = Math.round(Number(value) / 10); // Convert 0-100 to 0-10
-      if (this.platform.config.debug) {
-        this.platform.log.debug(`[FanPort] Queueing speed change for port ${this.portNumber} on device ${this.deviceId} to ${speed} (HomeKit value: ${value})`);
-      }
-      
       // Use the platform's request queue to prevent simultaneous API calls
       await this.platform.queueRequest(async () => {
         if (this.platform.config.debug) {
-          this.platform.log.debug(`[FanPort] Executing speed change for port ${this.portNumber} on device ${this.deviceId} to ${speed}`);
+          this.platform.log.debug(`[FanPort] Executing speed change for port ${this.portNumber} to ${speed}`);
         }
-        this.platform.log.info(`[FanPort] Making API call to set speed ${speed} for port ${this.portNumber}...`);
         const device = this.accessory.context.device;
         return this.platform.client.setDeviceModeSettings(
-          this.deviceId, 
-          this.portNumber, 
-          [[PortControlKey.ON_SPEED, speed]], 
-          device?.devType, 
+          this.deviceId,
+          this.portNumber,
+          [[PortControlKey.ON_SPEED, speed]],
+          device?.devType,
           device
         );
       });
-      
-      this.platform.log.info(`[FanPort] SUCCESS: Speed set to ${speed} for port ${this.portNumber}`);
-      
+
       // Cache the speed we just set to avoid reverting due to stale API data
       this.lastSetSpeed = speed;
       this.lastSetTime = Date.now();
-      
-      if (this.platform.config.debug) {
-        this.platform.log.debug(`[FanPort] Cached speed ${speed} for port ${this.portNumber}`);
-      }
     } catch (error) {
-      this.platform.log.error(`[FanPort] ERROR setting speed for port ${this.portNumber}:`, error);
-      if (error instanceof Error) {
-        this.platform.log.error(`[FanPort] Error details - Name: ${error.name}, Message: ${error.message}`);
-        if (error.stack) {
-          this.platform.log.error(`[FanPort] Stack trace:`, error.stack);
-        }
-      }
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.platform.log.error(`[FanPort] Failed to set speed for port ${this.portNumber}: ${errorMessage}`);
       throw new this.platform.api.hap.HapStatusError(-70402);
     }
   }

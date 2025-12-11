@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.4] - 2025-12-11
+
+### Improved
+- **📋 Cleaner Log Output**: Reduced verbose logging for better readability
+  - Simplified error messages (removed redundant stack traces and duplicate details)
+  - Moved frequent status checks to debug-only logging (getSpeed polling)
+  - More concise operation messages ("Setting speed to 50%" instead of multiple log lines)
+  - Error messages now show just the essential information
+  - Enable debug mode in config for detailed logging when troubleshooting
+
+### Technical Changes
+- Refactored error handling to show single-line error messages
+- Changed `getSpeed()` logging from info to debug level
+- Simplified `setSpeed()` and `setActive()` log messages
+- Cleaned up request queue error logging
+
 ## [1.3.3] - 2025-12-11
 
 ### Fixed

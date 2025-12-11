@@ -412,7 +412,8 @@ export class ACInfinityPlatform implements DynamicPlatformPlugin {
           }
           await request();
         } catch (error) {
-          this.log.error('[Request Queue] Request failed:', error);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.log.error(`[Request Queue] Request failed: ${errorMessage}`);
         }
         
         // Add a small delay between requests to prevent overwhelming the API
