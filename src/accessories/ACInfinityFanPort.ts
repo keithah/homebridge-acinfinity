@@ -174,35 +174,35 @@ export class ACInfinityFanPort {
     }
 
     // Debounce: Wait for user to stop sliding before sending API request
-    return new Promise((resolve, reject) => {
-      this.speedDebounceTimer = setTimeout(async () => {
-        this.speedDebounceTimer = null;
-        this.platform.log.info(`[FanPort] Setting speed to ${speed * 10}% for port ${this.portNumber}`);
+    // Don't await - return immediately so HomeKit doesn't revert on API errors
+    this.speedDebounceTimer = setTimeout(async () => {
+      this.speedDebounceTimer = null;
+      this.platform.log.info(`[FanPort] Setting speed to ${speed * 10}% for port ${this.portNumber}`);
 
-        try {
-          // Use the platform's request queue to prevent simultaneous API calls
-          await this.platform.queueRequest(async () => {
-            if (this.platform.config.debug) {
-              this.platform.log.debug(`[FanPort] Executing speed change for port ${this.portNumber} to ${speed}`);
-            }
-            const device = this.accessory.context.device;
-            return this.platform.client.setDeviceModeSettings(
-              this.deviceId,
-              this.portNumber,
-              [[PortControlKey.ON_SPEED, speed]],
-              device?.devType,
-              device
-            );
-          });
+      try {
+        // Use the platform's request queue to prevent simultaneous API calls
+        await this.platform.queueRequest(async () => {
+          if (this.platform.config.debug) {
+            this.platform.log.debug(`[FanPort] Executing speed change for port ${this.portNumber} to ${speed}`);
+          }
+          const device = this.accessory.context.device;
+          return this.platform.client.setDeviceModeSettings(
+            this.deviceId,
+            this.portNumber,
+            [[PortControlKey.ON_SPEED, speed]],
+            device?.devType,
+            device
+          );
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.platform.log.error(`[FanPort] Failed to set speed for port ${this.portNumber}: ${errorMessage}`);
+        // Don't throw - let the cached value stay so UI doesn't revert
+      }
+    }, this.SPEED_DEBOUNCE_MS);
 
-          resolve();
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          this.platform.log.error(`[FanPort] Failed to set speed for port ${this.portNumber}: ${errorMessage}`);
-          reject(new this.platform.api.hap.HapStatusError(-70402));
-        }
-      }, this.SPEED_DEBOUNCE_MS);
-    });
+    // Return immediately without waiting for API call
+    // This prevents HomeKit from reverting the value if the API fails
   }
 
   updatePort(port: any): void {

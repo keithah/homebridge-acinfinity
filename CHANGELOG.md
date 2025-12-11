@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.6] - 2025-12-11
+
+### Fixed
+- **🔧 Critical Fix: Speed Control Not Reverting**: Fixed issue where fan speed would revert to 0% after setting
+  - Problem: When API calls failed (error 100001), HomeKit would revert the speed change
+  - Solution: Return immediately from setSpeed without waiting for API response
+  - API calls still happen in background (debounced), but UI doesn't revert on errors
+  - Restores "works despite API errors" behavior from earlier versions
+  - Fan speed now stays at the value you set, even if API has intermittent issues
+
+### Technical Changes
+- Changed `setSpeed()` to fire-and-forget pattern
+- Errors logged but don't propagate to HomeKit
+- Cached value persists regardless of API response
+
 ## [1.3.5] - 2025-12-11
 
 ### Improved
