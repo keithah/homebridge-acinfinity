@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.3] - 2025-12-11
+
+### Fixed
+- **🎯 Type 11 Controller (UIS 69 PRO) Complete Control Fix**: Fixed fan control for Type 11 controllers
+  - Root cause: Type 11 controllers use controller-level settings (port 0), not per-port settings
+  - Solution: Use `externalPort=0` and fetch/send settings from port 0 instead of individual ports
+  - Keep `modeType=0` instead of toggling to 2 (Type 11 doesn't use ON/OFF mode like newer controllers)
+  - Use `offSpead=1` and `atType=2` defaults to match mobile app behavior
+  - **Enables full HomeKit control of Type 11 controllers for the first time**
+  - Discovered via Charles proxy capture analysis of official AC Infinity mobile app
+
+### Technical Changes
+- Modified `setDeviceModeSettingsLegacy()` to use port 0 (controller-level) for Type 11
+- Changed `modeType` to always be 0 for Type 11 (doesn't toggle ON/OFF)
+- Updated default values: `offSpead=1`, `ecTdsLowValueEcMs=1`, `ecTdsLowValueTdsPpt=1`
+- Changed `externalPort` parameter to use port 0 instead of actual port number for Type 11
+
 ## [1.3.2] - 2025-12-09
 
 ### Fixed

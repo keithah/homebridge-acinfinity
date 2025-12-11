@@ -449,15 +449,17 @@ export class ACInfinityClient {
       }
 
       // Step 1: Fetch current settings to populate static payload with real values (iPhone app approach)
-      const settings = await this.getDeviceModeSettingsListLegacy(deviceId, portId);
-      
+      // For Type 11 controllers, all settings are at controller level (port 0)
+      const settingsPort = 0;
+      const settings = await this.getDeviceModeSettingsListLegacy(deviceId, settingsPort);
+
       if (this.debug) {
-        this.log.debug(`[setDeviceModeSettingsLegacy] Retrieved current settings for static payload population`);
+        this.log.debug(`[setDeviceModeSettingsLegacy] Retrieved current settings for static payload population (using port ${settingsPort})`);
       }
 
       // Step 2: Create static payload with real device settings (iPhone app format)
-      // IMPORTANT: Set modeType to 2 (ON) when speed > 0, or 0 (OFF) when speed is 0
-      const modeType = speed > 0 ? 2 : 0;
+      // IMPORTANT: For Type 11, keep modeType at 0 (it doesn't work like newer controllers)
+      const modeType = 0;
 
       const params = new URLSearchParams({
         acitveTimerOff: String(settings.acitveTimerOff || 0),
@@ -493,15 +495,15 @@ export class ACInfinityClient {
         ecTdsLowValueTdsPpm: String(settings.ecTdsLowValueTdsPpm || 0),
         ecTdsLowValueTdsPpt: String(settings.ecTdsLowValueTdsPpt || 1),
         ecUnit: String(settings.ecUnit || 0),
-        externalPort: String(portId),
+        externalPort: String(settingsPort), // Type 11 uses port 0 (controller level)
         hTrend: String(settings.hTrend || 0),
         humidity: String(settings.humidity || 0),
         isOpenAutomation: String(settings.isOpenAutomation || 0),
         masterPort: String(settings.masterPort || 0),
-        modeType: String(modeType), // Set to 2 (ON) when speed > 0, otherwise 0 (OFF)
+        modeType: String(modeType), // Type 11 keeps at 0 (doesn't use ON/OFF mode like newer controllers)
         moistureLowSwitch: String(settings.moistureLowSwitch || 0),
         moistureLowValue: String(settings.moistureLowValue || 0),
-        offSpead: String(settings.offSpead || 0),
+        offSpead: String(settings.offSpead || 1), // Type 11 uses 1, not 0
         onSelfSpead: String(settings.onSelfSpead || 0), // Keep original value
         onSpead: String(speed), // Only change the actual speed
         onlyUpdateSpeed: String(settings.onlyUpdateSpeed || 0),
@@ -540,18 +542,19 @@ export class ACInfinityClient {
 
       if (this.debug) {
         this.log.debug(`[setDeviceModeSettingsLegacy] Sending static payload with real device settings (modeType=${modeType}, speed=${speed})`);
+        this.log.debug(`[setDeviceModeSettingsLegacy] Full payload: ${params.toString()}`);
       }
 
       // Step 3: Send using iPhone app User-Agent and headers
       const response = await this.axios.post(
         API_URL_ADD_DEV_MODE,
         params,
-        { 
-          headers: { 
+        {
+          headers: {
             token: this.userId!,
             phoneType: '1',
             appVersion: '1.9.7'
-          } 
+          }
         }
       );
 
