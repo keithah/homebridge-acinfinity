@@ -11,6 +11,8 @@ export class ACInfinityFanPort {
   private readonly fanService;
   private lastSetSpeed: number | null = null;
   private lastSetTime: number = 0;
+  private speedDebounceTimer: NodeJS.Timeout | null = null;
+  private readonly SPEED_DEBOUNCE_MS = 500; // Wait 500ms after user stops sliding
 
   constructor(platform: ACInfinityPlatform, accessory: PlatformAccessory) {
     this.platform = platform;
@@ -156,32 +158,51 @@ export class ACInfinityFanPort {
 
   async setSpeed(value: CharacteristicValue): Promise<void> {
     const speed = Math.round(Number(value) / 10); // Convert 0-100 to 0-10
-    this.platform.log.info(`[FanPort] Setting speed to ${speed * 10}% for port ${this.portNumber}`);
 
-    try {
-      // Use the platform's request queue to prevent simultaneous API calls
-      await this.platform.queueRequest(async () => {
-        if (this.platform.config.debug) {
-          this.platform.log.debug(`[FanPort] Executing speed change for port ${this.portNumber} to ${speed}`);
-        }
-        const device = this.accessory.context.device;
-        return this.platform.client.setDeviceModeSettings(
-          this.deviceId,
-          this.portNumber,
-          [[PortControlKey.ON_SPEED, speed]],
-          device?.devType,
-          device
-        );
-      });
-
-      // Cache the speed we just set to avoid reverting due to stale API data
-      this.lastSetSpeed = speed;
-      this.lastSetTime = Date.now();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.platform.log.error(`[FanPort] Failed to set speed for port ${this.portNumber}: ${errorMessage}`);
-      throw new this.platform.api.hap.HapStatusError(-70402);
+    // Cancel any pending speed change
+    if (this.speedDebounceTimer) {
+      clearTimeout(this.speedDebounceTimer);
+      this.speedDebounceTimer = null;
     }
+
+    // Immediately cache the value for responsive UI (getSpeed will return this)
+    this.lastSetSpeed = speed;
+    this.lastSetTime = Date.now();
+
+    if (this.platform.config.debug) {
+      this.platform.log.debug(`[FanPort] Speed slider moved to ${speed * 10}% for port ${this.portNumber} (debouncing...)`);
+    }
+
+    // Debounce: Wait for user to stop sliding before sending API request
+    return new Promise((resolve, reject) => {
+      this.speedDebounceTimer = setTimeout(async () => {
+        this.speedDebounceTimer = null;
+        this.platform.log.info(`[FanPort] Setting speed to ${speed * 10}% for port ${this.portNumber}`);
+
+        try {
+          // Use the platform's request queue to prevent simultaneous API calls
+          await this.platform.queueRequest(async () => {
+            if (this.platform.config.debug) {
+              this.platform.log.debug(`[FanPort] Executing speed change for port ${this.portNumber} to ${speed}`);
+            }
+            const device = this.accessory.context.device;
+            return this.platform.client.setDeviceModeSettings(
+              this.deviceId,
+              this.portNumber,
+              [[PortControlKey.ON_SPEED, speed]],
+              device?.devType,
+              device
+            );
+          });
+
+          resolve();
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.platform.log.error(`[FanPort] Failed to set speed for port ${this.portNumber}: ${errorMessage}`);
+          reject(new this.platform.api.hap.HapStatusError(-70402));
+        }
+      }, this.SPEED_DEBOUNCE_MS);
+    });
   }
 
   updatePort(port: any): void {

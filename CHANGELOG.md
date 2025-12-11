@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.5] - 2025-12-11
+
+### Improved
+- **🎯 Debounced Speed Control**: Added smart debouncing to fan speed slider
+  - Waits 500ms after user stops sliding before sending API request
+  - Prevents multiple rapid API calls while dragging the slider
+  - Eliminates the "jumping values" issue (10%→30%→60%)
+  - UI remains instantly responsive (cached value updates immediately)
+  - Only the final selected speed is sent to the device
+  - Much smoother user experience when adjusting fan speed
+
+### Technical Changes
+- Added debounce timer to `ACInfinityFanPort` class
+- Implemented 500ms debounce delay for `setSpeed()` calls
+- Speed value cached immediately for responsive UI feedback
+- API request only sent after debounce period expires
+
 ## [1.3.4] - 2025-12-11
 
 ### Improved
