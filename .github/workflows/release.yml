@@ -11,7 +11,7 @@ permissions:
 jobs:
   publish:
     timeout-minutes: 10
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     
     steps:
     - name: Checkout code

@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     timeout-minutes: 10
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     
     strategy:
       matrix:
